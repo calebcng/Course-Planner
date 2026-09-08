@@ -92,7 +92,7 @@ export function CourseCard({
             {course.durationTerms > 1 ? ` · ${course.durationTerms} terms` : ""}
           </Badge>
           {course.optional && (
-            <Badge className="bg-violet-100 text-violet-800">Optional</Badge>
+            <Badge className="bg-violet-100 text-violet-800">Elective</Badge>
           )}
           {onStatusChange && (
             <DropdownMenu>

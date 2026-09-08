@@ -105,7 +105,7 @@ export function UnscheduledSidebar({
               onCheckedChange={setShowOptional}
             />
             <Label htmlFor="show-optional" className="text-xs font-normal">
-              Show optional
+              Show elective
             </Label>
           </div>
           <div className="flex items-center gap-2">

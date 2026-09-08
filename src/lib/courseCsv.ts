@@ -130,7 +130,7 @@ export function parseStatus(raw: string): CourseStatus | null {
 
 function parseOptionalFlag(raw: string): boolean {
   const value = raw.trim().toLowerCase();
-  return value === "true" || value === "1" || value === "yes" || value === "optional";
+  return value === "true" || value === "1" || value === "yes" || value === "optional" || value === "elective";
 }
 
 function matchOfferedTerms(

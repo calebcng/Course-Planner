@@ -39,7 +39,7 @@ const COL_LABELS: Record<Col, string> = {
   duration: "Duration",
   offered: "Offered in",
   status: "Status",
-  optional: "Optional",
+  optional: "Elective",
   notes: "Notes",
   scheduled: "Scheduled term",
 };
@@ -443,7 +443,7 @@ export function CoursesView() {
                 size="sm"
                 variant={optionalFilters.length > 0 ? "default" : "outline"}
               >
-                Optional{optionalFilters.length > 0 ? ` (${optionalFilters.length})` : ""}
+                Elective{optionalFilters.length > 0 ? ` (${optionalFilters.length})` : ""}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
@@ -453,7 +453,7 @@ export function CoursesView() {
                   setOptionalFilters((current) => toggleValue(current, true))
                 }
               >
-                Optional
+                Elective
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
                 checked={optionalFilters.includes(false)}
@@ -741,7 +741,7 @@ function CourseRow({
             type="checkbox"
             checked={course.optional}
             onChange={() => onPatch({ optional: !course.optional })}
-            aria-label={`Optional ${course.number || course.name || "course"}`}
+            aria-label={`Elective ${course.number || course.name || "course"}`}
           />
         </label>
       </td>

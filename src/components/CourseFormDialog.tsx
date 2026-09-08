@@ -181,7 +181,7 @@ export function CourseFormDialog({
               checked={draft.optional}
               onChange={(e) => setDraft((d) => ({ ...d, optional: e.target.checked }))}
             />
-            Optional course
+            Elective course
           </label>
           <fieldset className="grid gap-2">
             <legend className="text-sm font-medium text-stone-700">Offered in</legend>
