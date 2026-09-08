@@ -198,6 +198,7 @@ export function CoursesView() {
   const [query, setQuery] = useState("");
   const [offeredIds, setOfferedIds] = useState<string[]>([]);
   const [statuses, setStatuses] = useState<CourseStatus[]>([]);
+  const [optionalFilters, setOptionalFilters] = useState<boolean[]>([]);
   const [focusId, setFocusId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -233,6 +234,9 @@ export function CoursesView() {
         if (statuses.length && !statuses.includes(c.status)) {
           return false;
         }
+        if (optionalFilters.length && !optionalFilters.includes(c.optional)) {
+          return false;
+        }
         return true;
       })
       .slice()
@@ -240,7 +244,7 @@ export function CoursesView() {
         (a, b) =>
           a.number.localeCompare(b.number) || a.name.localeCompare(b.name),
       );
-  }, [courses, query, offeredIds, statuses]);
+  }, [courses, query, offeredIds, statuses, optionalFilters]);
 
   const tableWidth = COLS.reduce((sum, col) => sum + widths[col], ACTIONS_WIDTH);
   const extra = Math.max(0, availableWidth - tableWidth);
@@ -430,6 +434,35 @@ export function CoursesView() {
                   {STATUS_LABELS[status]}
                 </DropdownMenuCheckboxItem>
               ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant={optionalFilters.length > 0 ? "default" : "outline"}
+              >
+                Optional{optionalFilters.length > 0 ? ` (${optionalFilters.length})` : ""}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuCheckboxItem
+                checked={optionalFilters.includes(true)}
+                onCheckedChange={() =>
+                  setOptionalFilters((current) => toggleValue(current, true))
+                }
+              >
+                Optional
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={optionalFilters.includes(false)}
+                onCheckedChange={() =>
+                  setOptionalFilters((current) => toggleValue(current, false))
+                }
+              >
+                Required
+              </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
