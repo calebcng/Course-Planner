@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Course Planner">
+  <rect width="32" height="32" fill="#f5f0e5"/>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="#115e59"/>
+  <rect x="7" y="8.5" width="18" height="16.5" rx="3" fill="#f4efe6"/>
+  <rect x="10.75" y="6.5" width="2.75" height="4" rx="1.2" fill="#115e59"/>
+  <rect x="18.5" y="6.5" width="2.75" height="4" rx="1.2" fill="#115e59"/>
+  <rect x="10" y="13" width="7.5" height="2.4" rx="1.2" fill="#f59e0b"/>
+  <rect x="10" y="17" width="12" height="2.4" rx="1.2" fill="#0f766e"/>
+  <rect x="10" y="21" width="9.5" height="2.4" rx="1.2" fill="#065f46"/>
+</svg>
