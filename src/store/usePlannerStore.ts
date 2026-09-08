@@ -25,9 +25,11 @@ import type {
 } from "@/types";
 import { applyPlacementStatuses } from "@/types";
 
-export type ScheduleView = "table" | "timeline" | "courses";
+export type AppPage = "schedule" | "courses" | "terms";
+export type ScheduleView = "table" | "timeline";
 
 export interface PlannerState extends PlannerDocument {
+  page: AppPage;
   view: ScheduleView;
   showWaived: boolean;
   sidebarCollapsed: boolean;
@@ -50,6 +52,7 @@ export interface PlannerState extends PlannerDocument {
   placeCourse: (courseId: string, startSlotId: string) => boolean;
   unplaceCourse: (courseId: string) => void;
   setMaxCoursesPerTerm: (n: number) => void;
+  setPage: (page: AppPage) => void;
   setView: (view: ScheduleView) => void;
   setShowWaived: (show: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
@@ -61,6 +64,21 @@ export interface PlannerState extends PlannerDocument {
 }
 
 const STORAGE_KEY = "course-planner";
+
+function migrateUiNav(state: { page?: unknown; view?: unknown }): {
+  page: AppPage;
+  view: ScheduleView;
+} {
+  if (state.view === "courses") {
+    return { page: "courses", view: "table" };
+  }
+  const page: AppPage =
+    state.page === "courses" || state.page === "terms" || state.page === "schedule"
+      ? state.page
+      : "schedule";
+  const view: ScheduleView = state.view === "timeline" ? "timeline" : "table";
+  return { page, view };
+}
 
 function documentSlice(state: PlannerDocument): PlannerDocument {
   return {
@@ -94,6 +112,7 @@ export const usePlannerStore = create<PlannerState>()(
   persist(
     (set, get) => ({
       ...createDefaultDocument(),
+      page: "schedule",
       view: "table",
       showWaived: false,
       sidebarCollapsed: false,
@@ -385,6 +404,7 @@ export const usePlannerStore = create<PlannerState>()(
         set({ maxCoursesPerTerm: Math.max(1, Math.min(12, Math.round(n) || 1)) });
       },
 
+      setPage: (page) => set({ page }),
       setView: (view) => set({ view }),
       setShowWaived: (show) => set({ showWaived: show }),
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
@@ -437,10 +457,19 @@ export const usePlannerStore = create<PlannerState>()(
         courses: state.courses,
         placements: state.placements,
         maxCoursesPerTerm: state.maxCoursesPerTerm,
+        page: state.page,
         view: state.view,
         showWaived: state.showWaived,
         sidebarCollapsed: state.sidebarCollapsed,
       }),
+      merge: (persisted, current) => {
+        const stored = (persisted ?? {}) as Partial<PlannerState>;
+        return {
+          ...current,
+          ...stored,
+          ...migrateUiNav(stored),
+        };
+      },
       onRehydrateStorage: () => () => {
         const fromHash = hashFromLocation();
         if (fromHash) {
@@ -456,6 +485,7 @@ export const usePlannerStore = create<PlannerState>()(
         usePlannerStore.setState({
           termDefinitions: orderedTermDefinitions(state.termDefinitions),
           courses: applyPlacementStatuses(state.courses, state.placements),
+          ...migrateUiNav(state),
         });
       },
     },

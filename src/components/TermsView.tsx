@@ -18,13 +18,6 @@ import { GripVertical, Trash2 } from "lucide-react";
 import { MONTH_OPTIONS } from "@/lib/dates";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePlannerStore } from "@/store/usePlannerStore";
@@ -132,13 +125,7 @@ function SortableTermRow({
   );
 }
 
-export function TermSettingsDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+export function TermsView() {
   const termDefinitions = usePlannerStore((s) => s.termDefinitions);
   const startYear = usePlannerStore((s) => s.startYear);
   const startTermDefinitionId = usePlannerStore((s) => s.startTermDefinitionId);
@@ -165,105 +152,107 @@ export function TermSettingsDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Terms & timeline</DialogTitle>
-          <DialogDescription>
+    <div className="min-h-0 flex-1 overflow-auto px-3 py-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-8">
+        <header className="grid gap-1">
+          <h2 className="font-serif text-2xl font-semibold text-stone-900">Terms & timeline</h2>
+          <p className="text-sm text-stone-500">
             Approximate months and week lengths for each repeating term, then extend the
             open-ended schedule.
-          </DialogDescription>
-        </DialogHeader>
-
-        <section className="grid gap-3">
-          <h3 className="text-sm font-semibold text-stone-800">Term templates</h3>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <SortableContext
-              items={termDefinitions.map((d) => d.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="grid gap-3">
-                {termDefinitions.map((def) => (
-                  <SortableTermRow
-                    key={def.id}
-                    def={def}
-                    canRemove={termDefinitions.length > 1}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-          <Button type="button" variant="secondary" onClick={() => addTermDefinition()}>
-            Add term template
-          </Button>
-        </section>
-
-        <section className="grid gap-3">
-          <h3 className="text-sm font-semibold text-stone-800">Timeline</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="start-year">Start year</Label>
-              <Input
-                id="start-year"
-                type="number"
-                value={startYear}
-                onChange={(e) => setStart(Number(e.target.value), startTermDefinitionId)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="start-term">Start term</Label>
-              <select
-                id="start-term"
-                className="h-9 rounded-md border border-stone-300 bg-white px-2 text-sm"
-                value={startTermDefinitionId}
-                onChange={(e) => setStart(startYear, e.target.value)}
-              >
-                {termDefinitions.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <p className="text-xs text-stone-500">
-            {slots.length} term{slots.length === 1 ? "" : "s"} on the canvas.
           </p>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={addPrevTerm}>
-              Add previous term
+        </header>
+
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+          <section className="grid w-full shrink-0 gap-3 lg:w-80">
+            <h3 className="text-sm font-semibold text-stone-800">Timeline</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="start-year">Start year</Label>
+                <Input
+                  id="start-year"
+                  type="number"
+                  value={startYear}
+                  onChange={(e) => setStart(Number(e.target.value), startTermDefinitionId)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="start-term">Start term</Label>
+                <select
+                  id="start-term"
+                  className="h-9 rounded-md border border-stone-300 bg-white px-2 text-sm"
+                  value={startTermDefinitionId}
+                  onChange={(e) => setStart(startYear, e.target.value)}
+                >
+                  {termDefinitions.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <p className="text-xs text-stone-500">
+              {slots.length} term{slots.length === 1 ? "" : "s"} on the canvas.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={addPrevTerm}>
+                Add previous term
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={addNextTerm}>
+                Add next term
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={addFullCycle}>
+                Add full cycle
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={removeFirstTerm}>
+                Remove first
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={removeLastTerm}>
+                Remove last
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Reset the timeline to one cycle from the start year/term and clear all placements?",
+                    )
+                  ) {
+                    resetTimeline();
+                  }
+                }}
+              >
+                Reset timeline
+              </Button>
+            </div>
+          </section>
+
+          <section className="grid min-w-0 flex-1 gap-3">
+            <h3 className="text-sm font-semibold text-stone-800">Term templates</h3>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext
+                items={termDefinitions.map((d) => d.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="grid gap-3">
+                  {termDefinitions.map((def) => (
+                    <SortableTermRow
+                      key={def.id}
+                      def={def}
+                      canRemove={termDefinitions.length > 1}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+            <Button type="button" variant="secondary" onClick={() => addTermDefinition()}>
+              Add term template
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={addNextTerm}>
-              Add next term
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={addFullCycle}>
-              Add full cycle
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={removeFirstTerm}>
-              Remove first
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={removeLastTerm}>
-              Remove last
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    "Reset the timeline to one cycle from the start year/term and clear all placements?",
-                  )
-                ) {
-                  resetTimeline();
-                }
-              }}
-            >
-              Reset timeline
-            </Button>
-          </div>
-        </section>
-      </DialogContent>
-    </Dialog>
+          </section>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -2,11 +2,16 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { AutoArrangeDialog } from "@/components/AutoArrangeDialog";
 import { ClearPlannedDialog } from "@/components/ClearPlannedDialog";
-import { TermSettingsDialog } from "@/components/TermSettingsDialog";
 import { Button } from "@/components/ui/button";
 import { documentToPrettyJson, parseImportedFile, writeHash } from "@/lib/serialize";
-import { usePlannerStore } from "@/store/usePlannerStore";
-import { CalendarRange, Download, Share2, Upload } from "lucide-react";
+import { usePlannerStore, type AppPage } from "@/store/usePlannerStore";
+import { Download, Share2, Upload } from "lucide-react";
+
+const PAGES: { id: AppPage; label: string }[] = [
+  { id: "schedule", label: "Schedule" },
+  { id: "courses", label: "Courses" },
+  { id: "terms", label: "Terms" },
+];
 
 export function Toolbar({
   onAutoArrange,
@@ -15,10 +20,11 @@ export function Toolbar({
   onAutoArrange: (fromSlotId: string | null) => void;
   onClearPlanned: () => void;
 }) {
+  const page = usePlannerStore((s) => s.page);
+  const setPage = usePlannerStore((s) => s.setPage);
   const view = usePlannerStore((s) => s.view);
   const setView = usePlannerStore((s) => s.setView);
   const hydrateFromDocument = usePlannerStore((s) => s.hydrateFromDocument);
-  const [termsOpen, setTermsOpen] = useState(false);
   const [arrangeOpen, setArrangeOpen] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -63,7 +69,7 @@ export function Toolbar({
 
   return (
     <header className="border-b border-stone-200 bg-[#f7f1e8]">
-      <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-3 px-3 py-2">
         <div>
           <h1 className="font-serif text-xl font-semibold leading-none text-stone-900">
             Course Planner
@@ -72,11 +78,21 @@ export function Toolbar({
             Plan terms, place courses, share a link
           </p>
         </div>
+        <nav className="flex rounded-md border border-stone-300 bg-white p-0.5" aria-label="Pages">
+          {PAGES.map((item) => (
+            <Button
+              key={item.id}
+              type="button"
+              size="sm"
+              variant={page === item.id ? "default" : "ghost"}
+              aria-current={page === item.id ? "page" : undefined}
+              onClick={() => setPage(item.id)}
+            >
+              {item.label}
+            </Button>
+          ))}
+        </nav>
         <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
-          <Button type="button" size="sm" variant="outline" onClick={() => setTermsOpen(true)}>
-            <CalendarRange />
-            Terms
-          </Button>
           <Button type="button" size="sm" variant="outline" onClick={copyShareLink}>
             <Share2 />
             Copy share link
@@ -103,34 +119,26 @@ export function Toolbar({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-stone-200 px-3 py-2">
-        <div className="flex rounded-md border border-stone-300 bg-white p-0.5">
-          <Button
-            type="button"
-            size="sm"
-            variant={view === "table" ? "default" : "ghost"}
-            onClick={() => setView("table")}
-          >
-            Table
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={view === "timeline" ? "default" : "ghost"}
-            onClick={() => setView("timeline")}
-          >
-            Timeline
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={view === "courses" ? "default" : "ghost"}
-            onClick={() => setView("courses")}
-          >
-            Courses
-          </Button>
-        </div>
-        {view !== "courses" && (
+      {page === "schedule" && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-stone-200 px-3 py-2">
+          <div className="flex rounded-md border border-stone-300 bg-white p-0.5">
+            <Button
+              type="button"
+              size="sm"
+              variant={view === "table" ? "default" : "ghost"}
+              onClick={() => setView("table")}
+            >
+              Table
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={view === "timeline" ? "default" : "ghost"}
+              onClick={() => setView("timeline")}
+            >
+              Timeline
+            </Button>
+          </div>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <Button type="button" size="sm" onClick={() => setArrangeOpen(true)}>
               Auto-arrange
@@ -144,10 +152,9 @@ export function Toolbar({
               Clear planned
             </Button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <TermSettingsDialog open={termsOpen} onOpenChange={setTermsOpen} />
       <AutoArrangeDialog
         open={arrangeOpen}
         onOpenChange={setArrangeOpen}
