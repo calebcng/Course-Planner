@@ -34,7 +34,6 @@ export function TimelineView({
   const placements = usePlannerStore((s) => s.placements);
   const termDefinitions = usePlannerStore((s) => s.termDefinitions);
   const setCourseStatus = usePlannerStore((s) => s.setCourseStatus);
-  const unplaceCourse = usePlannerStore((s) => s.unplaceCourse);
   const addNextTerm = usePlannerStore((s) => s.addNextTerm);
   const addPrevTerm = usePlannerStore((s) => s.addPrevTerm);
   const removeSlot = usePlannerStore((s) => s.removeSlot);
@@ -205,7 +204,6 @@ export function TimelineView({
                         toast.message(OFFERING_UNSCHEDULE_TOAST);
                       }
                     }}
-                    onUnschedule={() => unplaceCourse(item.course.id)}
                   />
                 </DraggableCourse>
               </div>

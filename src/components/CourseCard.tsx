@@ -43,7 +43,6 @@ export function CourseCard({
   isDragging = false,
   onEdit,
   onStatusChange,
-  onUnschedule,
 }: {
   course: Course;
   termDefinitions: TermDefinition[];
@@ -51,7 +50,6 @@ export function CourseCard({
   isDragging?: boolean;
   onEdit?: () => void;
   onStatusChange?: (status: CourseStatus) => void;
-  onUnschedule?: () => void;
 }) {
   const offered = offeredTermLabels(course, termDefinitions);
 
@@ -131,16 +129,6 @@ export function CourseCard({
         )}
         {course.notes && !compact && (
           <p className="mt-1 line-clamp-2 text-[11px] text-stone-500">{course.notes}</p>
-        )}
-        {onUnschedule && (
-          <button
-            type="button"
-            className="mt-1 text-[11px] font-medium text-teal-800 hover:underline"
-            onClick={onUnschedule}
-            onPointerDown={stopDrag}
-          >
-            Unschedule
-          </button>
         )}
       </div>
     </article>
