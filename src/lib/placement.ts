@@ -1,5 +1,4 @@
-import type { Course, CourseStatus, Placement, TermSlot } from "@/types";
-import { KEEP_PLACEMENT_STATUSES } from "@/types";
+import type { Course, Placement, TermSlot } from "@/types";
 import { occupiedSlotIds, slotIndex } from "@/lib/timeline";
 
 export function occupancyCounts(
@@ -49,21 +48,6 @@ export function placementForCourse(
 
 export const OFFERING_UNSCHEDULE_TOAST =
   "Unscheduled: this course is no longer offered in that term";
-
-/** True when a committed scheduled course becomes Planned but that term is not offered. */
-export function mustUnplaceAfterLeavingCommitted(options: {
-  previousStatus: CourseStatus;
-  nextStatus: CourseStatus;
-  offeredIn: string[];
-  startSlotId: string | undefined;
-  slots: TermSlot[];
-}): boolean {
-  if (options.nextStatus !== "planned") return false;
-  if (!KEEP_PLACEMENT_STATUSES.includes(options.previousStatus)) return false;
-  if (!options.startSlotId) return false;
-  const startSlot = options.slots.find((s) => s.id === options.startSlotId);
-  return !startSlot || !options.offeredIn.includes(startSlot.termDefinitionId);
-}
 
 export function canPlaceCourse(options: {
   course: Course;

@@ -12,11 +12,11 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
 import { courseCsvTemplate, coursesToCsv, parseCourseCsv } from "@/lib/courseCsv";
 import { monthRangeLabel } from "@/lib/dates";
-import { canPlaceCourse, placementForCourse, validStartSlotIds, OFFERING_UNSCHEDULE_TOAST } from "@/lib/placement";
+import { placementForCourse, validStartSlotIds, OFFERING_UNSCHEDULE_TOAST } from "@/lib/placement";
 import { slotLabel } from "@/lib/timeline";
 import { usePlannerStore } from "@/store/usePlannerStore";
 import type { Course, CourseStatus } from "@/types";
-import { COURSE_STATUSES, KEEP_PLACEMENT_STATUSES, STATUS_LABELS } from "@/types";
+import { COURSE_STATUSES, STATUS_LABELS } from "@/types";
 import { Download, Filter, MoreHorizontal, Plus, Trash2, Upload } from "lucide-react";
 
 const COLS = [
@@ -181,8 +181,6 @@ function ResizableHeader({
 
 export function CoursesView() {
   const courses = usePlannerStore((s) => s.courses);
-  const placements = usePlannerStore((s) => s.placements);
-  const slots = usePlannerStore((s) => s.slots);
   const termDefinitions = usePlannerStore((s) => s.termDefinitions);
   const addCourse = usePlannerStore((s) => s.addCourse);
   const updateCourse = usePlannerStore((s) => s.updateCourse);
@@ -312,22 +310,8 @@ export function CoursesView() {
   };
 
   const patchAndValidate = (course: Course, patch: Partial<Course>) => {
-    updateCourse(course.id, patch);
-    const next = { ...course, ...patch };
-    const placement = placementForCourse(placements, course.id);
-    if (!placement) return;
-    const ok = canPlaceCourse({
-      course: next,
-      startSlotId: placement.startSlotId,
-      slots,
-      placements,
-      courses,
-      ignoreCourseId: course.id,
-    });
-    if (!ok) {
-      if (KEEP_PLACEMENT_STATUSES.includes(course.status)) return;
-      unplaceCourse(course.id);
-      toast.message("Unscheduled: this course no longer fits that term");
+    if (updateCourse(course.id, patch)) {
+      toast.message(OFFERING_UNSCHEDULE_TOAST);
     }
   };
 

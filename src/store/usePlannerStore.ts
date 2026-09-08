@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 import { createDefaultDocument } from "@/defaults";
 import { autoArrange } from "@/lib/autoArrange";
 import { createId } from "@/lib/ids";
-import { canPlaceCourse, mustUnplaceAfterLeavingCommitted } from "@/lib/placement";
+import { canPlaceCourse } from "@/lib/placement";
 import { hashFromLocation } from "@/lib/serialize";
 import {
   appendCycle,
@@ -23,7 +23,7 @@ import type {
   PlannerDocument,
   TermDefinition,
 } from "@/types";
-import { applyPlacementStatuses } from "@/types";
+import { applyPlacementStatuses, KEEP_PLACEMENT_STATUSES } from "@/types";
 
 export type AppPage = "schedule" | "courses" | "terms";
 export type ScheduleView = "table" | "timeline";
@@ -317,15 +317,35 @@ export const usePlannerStore = create<PlannerState>()(
         const nextCourse = { ...course, ...patch, id };
         const nextCourses = courses.map((c) => (c.id === id ? nextCourse : c));
         const placement = placements.find((p) => p.courseId === id);
-        if (
-          mustUnplaceAfterLeavingCommitted({
-            previousStatus: course.status,
-            nextStatus: nextCourse.status,
-            offeredIn: nextCourse.offeredIn,
-            startSlotId: placement?.startSlotId,
-            slots,
-          })
-        ) {
+
+        if (!placement) {
+          set({ courses: nextCourses });
+          return false;
+        }
+
+        if (nextCourse.status === "not_planned") {
+          const nextPlacements = placements.filter((p) => p.courseId !== id);
+          set({
+            courses: applyPlacementStatuses(nextCourses, nextPlacements),
+            placements: nextPlacements,
+          });
+          return false;
+        }
+
+        if (KEEP_PLACEMENT_STATUSES.includes(nextCourse.status)) {
+          set({ courses: nextCourses });
+          return false;
+        }
+
+        const ok = canPlaceCourse({
+          course: nextCourse,
+          startSlotId: placement.startSlotId,
+          slots,
+          placements,
+          courses: nextCourses,
+          ignoreCourseId: id,
+        });
+        if (!ok) {
           const nextPlacements = placements.filter((p) => p.courseId !== id);
           set({
             courses: applyPlacementStatuses(nextCourses, nextPlacements),
@@ -333,6 +353,7 @@ export const usePlannerStore = create<PlannerState>()(
           });
           return true;
         }
+
         set({ courses: nextCourses });
         return false;
       },
@@ -414,9 +435,14 @@ export const usePlannerStore = create<PlannerState>()(
       unplaceCourse: (courseId) => {
         const { courses, placements } = get();
         const nextPlacements = placements.filter((p) => p.courseId !== courseId);
+        const nextCourses = courses.map((course) => {
+          if (course.id !== courseId) return course;
+          if (course.status === "optional" || course.status === "waived") return course;
+          return { ...course, status: "not_planned" as const };
+        });
         set({
           placements: nextPlacements,
-          courses: applyPlacementStatuses(courses, nextPlacements),
+          courses: applyPlacementStatuses(nextCourses, nextPlacements),
         });
       },
 
