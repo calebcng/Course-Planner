@@ -9,6 +9,7 @@ export const COURSE_CSV_HEADERS = [
   "offeredIn",
   "notes",
   "status",
+  "optional",
 ] as const;
 
 const STATUS_BY_LABEL = Object.fromEntries(
@@ -91,6 +92,7 @@ export function courseCsvTemplate(termNames: string[]): string {
       offered,
       "Optional notes",
       "not_planned",
+      "false",
     ]),
   ].join("\n") + "\n";
 }
@@ -110,6 +112,7 @@ export function coursesToCsv(courses: Course[], defs: TermDefinition[]): string 
       offered,
       course.notes,
       course.status,
+      course.optional ? "true" : "false",
     ]);
   });
   return [header, ...rows].join("\n") + "\n";
@@ -123,6 +126,11 @@ export function parseStatus(raw: string): CourseStatus | null {
     return lower as CourseStatus;
   }
   return STATUS_BY_LABEL[value.toLowerCase()] ?? null;
+}
+
+function parseOptionalFlag(raw: string): boolean {
+  const value = raw.trim().toLowerCase();
+  return value === "true" || value === "1" || value === "yes" || value === "optional";
 }
 
 function matchOfferedTerms(
@@ -162,6 +170,7 @@ export function parseCourseCsv(
     offeredIn: index("offeredIn"),
     notes: index("notes"),
     status: index("status"),
+    optional: index("optional"),
   };
   if (col.number < 0 || col.name < 0) {
     return {
@@ -192,11 +201,14 @@ export function parseCourseCsv(
       return;
     }
 
-    const status = parseStatus(cell(row, col.status));
+    const statusRaw = cell(row, col.status);
+    const legacyOptional = statusRaw.toLowerCase().replaceAll(" ", "_") === "optional";
+    const status = legacyOptional ? "not_planned" : parseStatus(statusRaw);
     if (!status) {
       skipped.push(`Row ${line}: unknown status`);
       return;
     }
+    const optional = legacyOptional || parseOptionalFlag(cell(row, col.optional));
 
     const offered = matchOfferedTerms(cell(row, col.offeredIn), termDefinitions);
     if (offered.unknown.length > 0) {
@@ -214,6 +226,7 @@ export function parseCourseCsv(
       offeredIn: offered.ids,
       notes: cell(row, col.notes),
       status,
+      optional,
     });
   });
 

@@ -4,7 +4,6 @@ export type CourseStatus =
   | "registered"
   | "in_progress"
   | "complete"
-  | "optional"
   | "waived";
 
 export interface TermDefinition {
@@ -31,6 +30,7 @@ export interface Course {
   offeredIn: string[];
   notes: string;
   status: CourseStatus;
+  optional: boolean;
 }
 
 export interface Placement {
@@ -55,7 +55,6 @@ export const COURSE_STATUSES: CourseStatus[] = [
   "registered",
   "in_progress",
   "complete",
-  "optional",
   "waived",
 ];
 
@@ -65,7 +64,6 @@ export const STATUS_LABELS: Record<CourseStatus, string> = {
   registered: "Registered",
   in_progress: "In progress",
   complete: "Complete",
-  optional: "Optional",
   waived: "Waived",
 };
 
@@ -73,7 +71,6 @@ export const MANUAL_STATUSES: CourseStatus[] = [
   "registered",
   "in_progress",
   "complete",
-  "optional",
   "waived",
 ];
 
@@ -83,6 +80,24 @@ export const KEEP_PLACEMENT_STATUSES: CourseStatus[] = [
   "in_progress",
   "complete",
 ];
+
+export function normalizeCourse(course: Course): Course {
+  const legacyOptional = (course.status as string) === "optional";
+  const status: CourseStatus = legacyOptional
+    ? "not_planned"
+    : COURSE_STATUSES.includes(course.status)
+      ? course.status
+      : "not_planned";
+  return {
+    ...course,
+    status,
+    optional: course.optional === true || legacyOptional,
+  };
+}
+
+export function normalizeCourses(courses: Course[]): Course[] {
+  return courses.map(normalizeCourse);
+}
 
 export function applyPlacementStatuses(
   courses: Course[],

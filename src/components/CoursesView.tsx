@@ -26,6 +26,7 @@ const COLS = [
   "duration",
   "offered",
   "status",
+  "optional",
   "notes",
   "scheduled",
 ] as const;
@@ -38,6 +39,7 @@ const COL_LABELS: Record<Col, string> = {
   duration: "Duration",
   offered: "Offered in",
   status: "Status",
+  optional: "Optional",
   notes: "Notes",
   scheduled: "Scheduled term",
 };
@@ -49,6 +51,7 @@ const MIN_WIDTH: Record<Col, number> = {
   duration: 64,
   offered: 88,
   status: 88,
+  optional: 72,
   notes: 80,
   scheduled: 96,
 };
@@ -60,6 +63,7 @@ const DEFAULT_WIDTH: Record<Col, number> = {
   duration: 80,
   offered: 200,
   status: 132,
+  optional: 80,
   notes: 180,
   scheduled: 148,
 };
@@ -115,6 +119,7 @@ function emptyCourse(offeredIn: string[]): Omit<Course, "id"> {
     offeredIn,
     notes: "",
     status: "not_planned",
+    optional: false,
   };
 }
 
@@ -696,6 +701,16 @@ function CourseRow({
             </option>
           ))}
         </select>
+      </td>
+      <td className={cell}>
+        <label className="flex min-h-8 items-center justify-center px-2">
+          <input
+            type="checkbox"
+            checked={course.optional}
+            onChange={() => onPatch({ optional: !course.optional })}
+            aria-label={`Optional ${course.number || course.name || "course"}`}
+          />
+        </label>
       </td>
       <td className={cell}>
         <CellText

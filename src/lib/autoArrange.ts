@@ -59,7 +59,7 @@ export function autoArrange(
 } {
   const placedIds = new Set(doc.placements.map((p) => p.courseId));
   const remaining = doc.courses
-    .filter((c) => c.status === "not_planned" && !placedIds.has(c.id))
+    .filter((c) => c.status === "not_planned" && !c.optional && !placedIds.has(c.id))
     .slice()
     .sort(sortRemaining);
 

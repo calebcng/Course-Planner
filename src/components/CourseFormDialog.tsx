@@ -29,6 +29,7 @@ function emptyDraft(offeredIn: string[]): Draft {
     offeredIn,
     notes: "",
     status: "not_planned",
+    optional: false,
   };
 }
 
@@ -65,6 +66,7 @@ export function CourseFormDialog({
         offeredIn: existing.offeredIn,
         notes: existing.notes,
         status: existing.status,
+        optional: existing.optional,
       });
     } else {
       setDraft(emptyDraft(termDefinitions.map((d) => d.id)));
@@ -173,6 +175,14 @@ export function CourseFormDialog({
               </select>
             </div>
           </div>
+          <label className="flex items-center gap-2 text-sm text-stone-700">
+            <input
+              type="checkbox"
+              checked={draft.optional}
+              onChange={(e) => setDraft((d) => ({ ...d, optional: e.target.checked }))}
+            />
+            Optional course
+          </label>
           <fieldset className="grid gap-2">
             <legend className="text-sm font-medium text-stone-700">Offered in</legend>
             <div className="grid gap-1.5">

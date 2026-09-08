@@ -37,7 +37,7 @@ export function UnscheduledSidebar({
   const unscheduled = courses.filter((c) => {
     if (placed.has(c.id)) return false;
     if (c.status === "waived" && !showWaived) return false;
-    if (c.status === "optional" && !showOptional) return false;
+    if (c.optional && !showOptional) return false;
     return true;
   });
 

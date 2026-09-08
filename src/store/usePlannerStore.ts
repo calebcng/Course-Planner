@@ -23,7 +23,7 @@ import type {
   PlannerDocument,
   TermDefinition,
 } from "@/types";
-import { applyPlacementStatuses, KEEP_PLACEMENT_STATUSES } from "@/types";
+import { applyPlacementStatuses, KEEP_PLACEMENT_STATUSES, normalizeCourse, normalizeCourses } from "@/types";
 
 export type AppPage = "schedule" | "courses" | "terms";
 export type ScheduleView = "table" | "timeline";
@@ -293,7 +293,7 @@ export const usePlannerStore = create<PlannerState>()(
 
       addCourse: (input) => {
         const id = createId();
-        const course: Course = { ...input, id };
+        const course = normalizeCourse({ ...input, id, optional: input.optional ?? false });
         const { courses, placements } = get();
         set({
           courses: applyPlacementStatuses([...courses, course], placements),
@@ -304,7 +304,9 @@ export const usePlannerStore = create<PlannerState>()(
       importCourses: (incoming) => {
         if (incoming.length === 0) return;
         const { courses, placements } = get();
-        const next = incoming.map((input) => ({ ...input, id: createId() }));
+        const next = incoming.map((input) =>
+          normalizeCourse({ ...input, id: createId(), optional: input.optional ?? false }),
+        );
         set({
           courses: applyPlacementStatuses([...courses, ...next], placements),
         });
@@ -437,7 +439,7 @@ export const usePlannerStore = create<PlannerState>()(
         const nextPlacements = placements.filter((p) => p.courseId !== courseId);
         const nextCourses = courses.map((course) => {
           if (course.id !== courseId) return course;
-          if (course.status === "optional" || course.status === "waived") return course;
+          if (course.status === "waived") return course;
           return { ...course, status: "not_planned" as const };
         });
         set({
@@ -481,13 +483,14 @@ export const usePlannerStore = create<PlannerState>()(
       },
 
       hydrateFromDocument: (doc) => {
+        const courses = normalizeCourses(doc.courses);
         set({
           version: 1,
           termDefinitions: orderedTermDefinitions(doc.termDefinitions),
           startYear: doc.startYear,
           startTermDefinitionId: doc.startTermDefinitionId,
           slots: doc.slots,
-          courses: applyPlacementStatuses(doc.courses, doc.placements),
+          courses: applyPlacementStatuses(courses, doc.placements),
           placements: doc.placements,
           maxCoursesPerTerm: doc.maxCoursesPerTerm,
         });
@@ -516,23 +519,26 @@ export const usePlannerStore = create<PlannerState>()(
           ...current,
           ...stored,
           ...migrateUiNav(stored),
+          courses: stored.courses ? normalizeCourses(stored.courses) : current.courses,
         };
       },
       onRehydrateStorage: () => () => {
         const fromHash = hashFromLocation();
         if (fromHash) {
+          const courses = normalizeCourses(fromHash.courses);
           usePlannerStore.setState({
             ...fromHash,
             version: 1,
             termDefinitions: orderedTermDefinitions(fromHash.termDefinitions),
-            courses: applyPlacementStatuses(fromHash.courses, fromHash.placements),
+            courses: applyPlacementStatuses(courses, fromHash.placements),
           });
           return;
         }
         const state = usePlannerStore.getState();
+        const courses = normalizeCourses(state.courses);
         usePlannerStore.setState({
           termDefinitions: orderedTermDefinitions(state.termDefinitions),
-          courses: applyPlacementStatuses(state.courses, state.placements),
+          courses: applyPlacementStatuses(courses, state.placements),
           ...migrateUiNav(state),
         });
       },
