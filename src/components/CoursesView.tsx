@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/cn";
 import { courseCsvTemplate, parseCourseCsv } from "@/lib/courseCsv";
 import { monthRangeLabel } from "@/lib/dates";
 import { canPlaceCourse, placementForCourse, validStartSlotIds } from "@/lib/placement";
@@ -11,8 +12,88 @@ import type { Course, CourseStatus } from "@/types";
 import { COURSE_STATUSES, STATUS_LABELS } from "@/types";
 import { Download, Plus, Trash2, Upload } from "lucide-react";
 
-const selectClass =
-  "h-8 w-full rounded-md border border-stone-300 bg-white px-2 text-xs text-stone-900";
+const COLS = [
+  "number",
+  "name",
+  "credits",
+  "duration",
+  "offered",
+  "status",
+  "notes",
+  "scheduled",
+] as const;
+type Col = (typeof COLS)[number];
+
+const COL_LABELS: Record<Col, string> = {
+  number: "Number",
+  name: "Name",
+  credits: "Credits",
+  duration: "Duration",
+  offered: "Offered in",
+  status: "Status",
+  notes: "Notes",
+  scheduled: "Scheduled term",
+};
+
+const MIN_WIDTH: Record<Col, number> = {
+  number: 72,
+  name: 80,
+  credits: 56,
+  duration: 64,
+  offered: 88,
+  status: 88,
+  notes: 80,
+  scheduled: 96,
+};
+
+const DEFAULT_WIDTH: Record<Col, number> = {
+  number: 72,
+  name: 220,
+  credits: 72,
+  duration: 80,
+  offered: 200,
+  status: 132,
+  notes: 180,
+  scheduled: 148,
+};
+
+const ACTIONS_WIDTH = 40;
+const NAME_EXTRA_WEIGHT = 1;
+const NOTES_EXTRA_WEIGHT = 2;
+
+let measureCanvas: HTMLCanvasElement | undefined;
+
+function measureTextWidth(text: string, font: string): number {
+  measureCanvas ??= document.createElement("canvas");
+  const ctx = measureCanvas.getContext("2d");
+  if (!ctx) return text.length * 8;
+  ctx.font = font;
+  return ctx.measureText(text).width;
+}
+
+function fitNumberWidth(courses: Course[]): number {
+  const samples = ["NUMBER", "BI-5500", ...courses.map((c) => (c.number || "").trim())].filter(
+    Boolean,
+  );
+  const bodyFont = '500 14px "DM Sans", ui-sans-serif, system-ui, sans-serif';
+  const headerFont = '600 12px "DM Sans", ui-sans-serif, system-ui, sans-serif';
+  let widest = 0;
+  for (const sample of samples) {
+    widest = Math.max(
+      widest,
+      measureTextWidth(sample, bodyFont),
+      measureTextWidth(sample.toUpperCase(), headerFont),
+    );
+  }
+  return Math.ceil(widest + 28);
+}
+
+const cellInput =
+  "w-full min-w-0 border-0 bg-transparent px-2 text-sm text-stone-900 shadow-none outline-none ring-0 placeholder:text-stone-400 focus-visible:ring-0";
+const cellSelect =
+  "min-h-8 w-full min-w-0 cursor-pointer border-0 bg-transparent px-2 py-1.5 text-sm text-stone-900 outline-none ring-0";
+const cell =
+  "border-b border-r border-stone-200 bg-white p-0 align-top focus-within:bg-teal-50/40";
 
 function emptyCourse(offeredIn: string[]): Omit<Course, "id"> {
   return {
@@ -24,6 +105,67 @@ function emptyCourse(offeredIn: string[]): Omit<Course, "id"> {
     notes: "",
     status: "not_planned",
   };
+}
+
+function CellText({
+  id,
+  value,
+  onChange,
+  placeholder,
+  className,
+  nowrap = false,
+}: {
+  id?: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  nowrap?: boolean;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.max(32, el.scrollHeight)}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      id={id}
+      rows={1}
+      className={cn(
+        cellInput,
+        "min-h-8 resize-none overflow-hidden py-1.5 leading-snug",
+        nowrap ? "whitespace-nowrap" : "break-words",
+        className,
+      )}
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
+}
+
+function ResizableHeader({
+  col,
+  onResize,
+}: {
+  col: Col;
+  onResize: (col: Col, event: PointerEvent<HTMLButtonElement>) => void;
+}) {
+  return (
+    <th className="relative border-b border-r border-stone-200 bg-[#efe8dc] px-2 py-2 font-medium">
+      <span className="pr-1">{COL_LABELS[col]}</span>
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label={`Resize ${COL_LABELS[col]} column`}
+        className="absolute right-0 top-0 z-20 h-full w-1.5 cursor-col-resize hover:bg-teal-700/50"
+        onPointerDown={(event) => onResize(col, event)}
+      />
+    </th>
+  );
 }
 
 export function CoursesView() {
@@ -42,6 +184,21 @@ export function CoursesView() {
   const [query, setQuery] = useState("");
   const [focusId, setFocusId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const numberResized = useRef(false);
+  const [availableWidth, setAvailableWidth] = useState(0);
+  const [widths, setWidths] = useState<Record<Col, number>>({
+    ...DEFAULT_WIDTH,
+    number: fitNumberWidth(courses),
+  });
+
+  const fittedNumber = useMemo(() => fitNumberWidth(courses), [courses]);
+  useEffect(() => {
+    if (numberResized.current) return;
+    setWidths((current) =>
+      current.number === fittedNumber ? current : { ...current, number: fittedNumber },
+    );
+  }, [fittedNumber]);
 
   const sorted = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -58,6 +215,48 @@ export function CoursesView() {
           a.number.localeCompare(b.number) || a.name.localeCompare(b.name),
       );
   }, [courses, query]);
+
+  const tableWidth = COLS.reduce((sum, col) => sum + widths[col], ACTIONS_WIDTH);
+  const extra = Math.max(0, availableWidth - tableWidth);
+  const extraShare = NAME_EXTRA_WEIGHT + NOTES_EXTRA_WEIGHT;
+  const displayWidths: Record<Col, number> = {
+    ...widths,
+    name: widths.name + (extra * NAME_EXTRA_WEIGHT) / extraShare,
+    notes: widths.notes + (extra * NOTES_EXTRA_WEIGHT) / extraShare,
+  };
+  const displayTableWidth = tableWidth + extra;
+
+  useLayoutEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const sync = () => setAvailableWidth(el.clientWidth);
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const startResize = (col: Col, event: PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (col === "number") numberResized.current = true;
+    const originX = event.clientX;
+    const originW = widths[col];
+    const onMove = (move: globalThis.PointerEvent) => {
+      const min = col === "number" ? fittedNumber : MIN_WIDTH[col];
+      const next = Math.max(min, originW + move.clientX - originX);
+      setWidths((current) => ({ ...current, [col]: next }));
+    };
+    const onUp = () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
 
   useEffect(() => {
     if (!focusId) return;
@@ -170,7 +369,8 @@ export function CoursesView() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-auto px-3">
+        <div ref={wrapRef} className="w-full">
         {sorted.length === 0 ? (
           <p className="p-8 text-center text-sm text-stone-500">
             {courses.length === 0
@@ -178,18 +378,22 @@ export function CoursesView() {
               : "No courses match that search."}
           </p>
         ) : (
-          <table className="w-full min-w-[64rem] border-collapse text-left text-sm">
-            <thead className="sticky top-0 z-10 bg-[#f7f1e8]">
-              <tr className="border-b border-stone-200 text-xs font-semibold uppercase tracking-wide text-stone-500">
-                <th className="px-2 py-2 font-medium">Number</th>
-                <th className="px-2 py-2 font-medium">Name</th>
-                <th className="px-2 py-2 font-medium">Credits</th>
-                <th className="px-2 py-2 font-medium">Duration</th>
-                <th className="px-2 py-2 font-medium">Offered in</th>
-                <th className="px-2 py-2 font-medium">Status</th>
-                <th className="px-2 py-2 font-medium">Notes</th>
-                <th className="px-2 py-2 font-medium">Scheduled term</th>
-                <th className="px-2 py-2 font-medium">
+          <table
+            className="border-collapse border-l border-t border-stone-200 bg-white text-left text-sm"
+            style={{ tableLayout: "fixed", width: displayTableWidth }}
+          >
+            <colgroup>
+              {COLS.map((col) => (
+                <col key={col} style={{ width: displayWidths[col] }} />
+              ))}
+              <col style={{ width: ACTIONS_WIDTH }} />
+            </colgroup>
+            <thead className="sticky top-0 z-10">
+              <tr className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+                {COLS.map((col) => (
+                  <ResizableHeader key={col} col={col} onResize={startResize} />
+                ))}
+                <th className="border-b border-stone-200 bg-[#efe8dc] px-2 py-2 font-medium">
                   <span className="sr-only">Delete</span>
                 </th>
               </tr>
@@ -216,6 +420,7 @@ export function CoursesView() {
             </tbody>
           </table>
         )}
+        </div>
       </div>
     </div>
   );
@@ -260,27 +465,27 @@ function CourseRow({
   };
 
   return (
-    <tr className="border-b border-stone-200 align-top hover:bg-white/50">
-      <td className="px-2 py-1.5">
-        <Input
+    <tr className="hover:bg-stone-50/80">
+      <td className={cell}>
+        <CellText
           id={`course-number-${course.id}`}
-          className="h-8 min-w-24"
+          className="font-medium"
+          nowrap
           value={course.number}
-          onChange={(e) => onPatch({ number: e.target.value })}
+          onChange={(value) => onPatch({ number: value })}
           placeholder="BI-5500"
         />
       </td>
-      <td className="px-2 py-1.5">
-        <Input
-          className="h-8 min-w-40"
+      <td className={cell}>
+        <CellText
           value={course.name}
-          onChange={(e) => onPatch({ name: e.target.value })}
+          onChange={(value) => onPatch({ name: value })}
           placeholder="Course name"
         />
       </td>
-      <td className="px-2 py-1.5">
-        <Input
-          className="h-8 w-16"
+      <td className={cell}>
+        <input
+          className={`${cellInput} h-8 tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
           type="number"
           min={0}
           step={0.5}
@@ -288,9 +493,9 @@ function CourseRow({
           onChange={(e) => onPatch({ credits: Number(e.target.value) })}
         />
       </td>
-      <td className="px-2 py-1.5">
-        <Input
-          className="h-8 w-16"
+      <td className={cell}>
+        <input
+          className={`${cellInput} h-8 tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
           type="number"
           min={1}
           value={course.durationTerms}
@@ -301,28 +506,28 @@ function CourseRow({
           }
         />
       </td>
-      <td className="px-2 py-1.5">
-        <div className="flex min-w-48 flex-col gap-1">
+      <td className={cell}>
+        <div className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-0.5 px-2 py-1">
           {termDefinitions.map((def) => (
-            <label key={def.id} className="flex items-center gap-1.5 text-xs">
+            <label
+              key={def.id}
+              className="flex items-center gap-1 text-xs leading-snug text-stone-700"
+              title={monthRangeLabel(def.startMonth, def.endMonth)}
+            >
               <input
                 type="checkbox"
+                className="shrink-0"
                 checked={course.offeredIn.includes(def.id)}
                 onChange={() => toggleOffered(def.id)}
               />
-              <span>
-                {def.name}{" "}
-                <span className="text-stone-400">
-                  ({monthRangeLabel(def.startMonth, def.endMonth)})
-                </span>
-              </span>
+              <span className="break-words">{def.name}</span>
             </label>
           ))}
         </div>
       </td>
-      <td className="px-2 py-1.5">
+      <td className={cell}>
         <select
-          className={selectClass}
+          className={`${cellSelect} break-words`}
           value={course.status}
           onChange={(e) => onStatus(e.target.value as CourseStatus)}
         >
@@ -333,19 +538,23 @@ function CourseRow({
           ))}
         </select>
       </td>
-      <td className="px-2 py-1.5">
-        <Input
-          className="h-8 min-w-36"
+      <td className={cell}>
+        <CellText
           value={course.notes}
-          onChange={(e) => onPatch({ notes: e.target.value })}
+          onChange={(value) => onPatch({ notes: value })}
           placeholder="Notes"
         />
       </td>
-      <td className="px-2 py-1.5">
+      <td className={cell}>
         <select
-          className={selectClass}
+          className={`${cellSelect} break-words whitespace-normal`}
           value={placement?.startSlotId ?? ""}
           onChange={(e) => onSchedule(e.target.value)}
+          title={
+            !hasValidSlot && !placement
+              ? "No matching terms on the schedule. Add terms in Table or Timeline."
+              : undefined
+          }
         >
           <option value="">Unscheduled</option>
           {slots.map((slot) => {
@@ -358,18 +567,13 @@ function CourseRow({
             );
           })}
         </select>
-        {!hasValidSlot && !placement && (
-          <p className="mt-1 text-[11px] text-stone-500">
-            No matching terms on the schedule. Add terms in Table or Timeline.
-          </p>
-        )}
       </td>
-      <td className="px-2 py-1.5">
+      <td className="border-b border-stone-200 bg-white p-0 text-center align-top">
         <Button
           type="button"
           size="icon"
           variant="ghost"
-          className="h-8 w-8 text-red-800 hover:text-red-900"
+          className="h-8 w-8 text-stone-400 hover:text-red-800"
           onClick={onRemove}
           aria-label={`Delete ${course.number || course.name || "course"}`}
         >
