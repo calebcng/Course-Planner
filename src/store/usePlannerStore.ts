@@ -55,7 +55,8 @@ export interface PlannerState extends PlannerDocument {
   setSidebarCollapsed: (collapsed: boolean) => void;
   importCourses: (courses: Omit<Course, "id">[]) => void;
   placeCourseOnTerm: (courseId: string, target: { year: number; termDefinitionId: string }) => boolean;
-  runAutoArrange: () => Course[];
+  runAutoArrange: (fromSlotId?: string | null) => Course[];
+  clearPlannedCourses: () => number;
   hydrateFromDocument: (doc: PlannerDocument) => void;
 }
 
@@ -388,14 +389,28 @@ export const usePlannerStore = create<PlannerState>()(
       setShowWaived: (show) => set({ showWaived: show }),
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
 
-      runAutoArrange: () => {
-        const result = autoArrange(documentSlice(get()));
+      runAutoArrange: (fromSlotId) => {
+        const result = autoArrange(documentSlice(get()), { fromSlotId });
         set({
           slots: result.document.slots,
           placements: result.document.placements,
           courses: applyPlacementStatuses(get().courses, result.document.placements),
         });
         return result.unplaced;
+      },
+
+      clearPlannedCourses: () => {
+        const { courses, placements } = get();
+        const plannedIds = new Set(
+          courses.filter((c) => c.status === "planned").map((c) => c.id),
+        );
+        if (plannedIds.size === 0) return 0;
+        const nextPlacements = placements.filter((p) => !plannedIds.has(p.courseId));
+        set({
+          placements: nextPlacements,
+          courses: applyPlacementStatuses(courses, nextPlacements),
+        });
+        return plannedIds.size;
       },
 
       hydrateFromDocument: (doc) => {

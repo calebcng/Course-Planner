@@ -7,9 +7,10 @@ import { usePlannerStore } from "@/store/usePlannerStore";
 export default function App() {
   const view = usePlannerStore((s) => s.view);
   const runAutoArrange = usePlannerStore((s) => s.runAutoArrange);
+  const clearPlannedCourses = usePlannerStore((s) => s.clearPlannedCourses);
 
-  const onAutoArrange = () => {
-    const unplaced = runAutoArrange();
+  const onAutoArrange = (fromSlotId: string | null) => {
+    const unplaced = runAutoArrange(fromSlotId);
     if (unplaced.length === 0) {
       toast.success("Schedule arranged");
       return;
@@ -23,9 +24,20 @@ export default function App() {
     );
   };
 
+  const onClearPlanned = () => {
+    const count = clearPlannedCourses();
+    if (count === 0) {
+      toast.message("No Planned courses to clear");
+      return;
+    }
+    toast.success(
+      `Cleared ${count} Planned course${count === 1 ? "" : "s"}`,
+    );
+  };
+
   return (
     <div className="flex h-screen flex-col">
-      <Toolbar onAutoArrange={onAutoArrange} />
+      <Toolbar onAutoArrange={onAutoArrange} onClearPlanned={onClearPlanned} />
       {view === "courses" ? <CoursesView /> : <ScheduleCanvas />}
       <Toaster richColors position="bottom-right" />
     </div>

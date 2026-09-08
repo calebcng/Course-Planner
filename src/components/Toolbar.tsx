@@ -1,22 +1,26 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { AutoArrangeDialog } from "@/components/AutoArrangeDialog";
+import { ClearPlannedDialog } from "@/components/ClearPlannedDialog";
 import { TermSettingsDialog } from "@/components/TermSettingsDialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { documentToPrettyJson, parseImportedFile, writeHash } from "@/lib/serialize";
 import { usePlannerStore } from "@/store/usePlannerStore";
 import { CalendarRange, Download, Share2, Upload } from "lucide-react";
 
-export function Toolbar({ onAutoArrange }: { onAutoArrange: () => void }) {
+export function Toolbar({
+  onAutoArrange,
+  onClearPlanned,
+}: {
+  onAutoArrange: (fromSlotId: string | null) => void;
+  onClearPlanned: () => void;
+}) {
   const view = usePlannerStore((s) => s.view);
   const setView = usePlannerStore((s) => s.setView);
-  const maxCoursesPerTerm = usePlannerStore((s) => s.maxCoursesPerTerm);
-  const setMaxCoursesPerTerm = usePlannerStore((s) => s.setMaxCoursesPerTerm);
   const hydrateFromDocument = usePlannerStore((s) => s.hydrateFromDocument);
   const [termsOpen, setTermsOpen] = useState(false);
   const [arrangeOpen, setArrangeOpen] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const copyShareLink = async () => {
@@ -127,28 +131,19 @@ export function Toolbar({ onAutoArrange }: { onAutoArrange: () => void }) {
           </Button>
         </div>
         {view !== "courses" && (
-          <>
-            <div
-              className="flex items-center gap-1.5"
-              title="Used by Auto-arrange. You can drag extra courses onto a term by hand."
-            >
-              <Label htmlFor="max-courses" className="text-xs">
-                Max / term
-              </Label>
-              <Input
-                id="max-courses"
-                type="number"
-                min={1}
-                max={12}
-                className="h-8 w-14"
-                value={maxCoursesPerTerm}
-                onChange={(e) => setMaxCoursesPerTerm(Number(e.target.value))}
-              />
-            </div>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             <Button type="button" size="sm" onClick={() => setArrangeOpen(true)}>
               Auto-arrange
             </Button>
-          </>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setClearOpen(true)}
+            >
+              Clear planned
+            </Button>
+          </div>
         )}
       </div>
 
@@ -157,6 +152,11 @@ export function Toolbar({ onAutoArrange }: { onAutoArrange: () => void }) {
         open={arrangeOpen}
         onOpenChange={setArrangeOpen}
         onConfirm={onAutoArrange}
+      />
+      <ClearPlannedDialog
+        open={clearOpen}
+        onOpenChange={setClearOpen}
+        onConfirm={onClearPlanned}
       />
     </header>
   );

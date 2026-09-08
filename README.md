@@ -39,4 +39,4 @@ The published URL is `https://calebcng.github.io/Course-Planner/`. Share links s
 1. **Terms** — default Fall A/B, Spring A/B, and Summer. Adjust months and week lengths, then add previous/next terms or a full cycle.
 2. **Courses** — open the **Courses** view to add, edit, or delete catalog rows, schedule a course onto a term, and **Download template** / **Import courses** (CSV). Toolbar **Export / Import** is the full planner JSON.
 3. **Schedule** — Table and Timeline views. Drag a course tile from the unscheduled sidebar onto a highlighted valid term. Use **Plan** for suggestions.
-4. **Auto-arrange** — places only **Not planned** courses, respects **Max / term**, and leaves already scheduled courses where they are. Drag or Plan can put more courses in a term than the max.
+4. **Auto-arrange** — places only **Not planned** courses starting at the next future term (you can pick another term and **Max / term** in the dialog). Already scheduled courses stay put. Drag or Plan can still put more courses in a term than the max. **Clear planned** unschedules Planned courses back to Not planned.

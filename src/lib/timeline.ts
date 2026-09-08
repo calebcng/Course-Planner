@@ -1,4 +1,5 @@
 import type { TermDefinition, TermSlot } from "@/types";
+import { startOfLocalDay } from "@/lib/dates";
 import { createId } from "@/lib/ids";
 
 export function sortedTermDefs(defs: TermDefinition[]): TermDefinition[] {
@@ -156,6 +157,35 @@ export function slotLabel(
 ): string {
   const def = getTermDef(defs, slot.termDefinitionId);
   return def ? `${def.name} ${slot.year}` : `Term ${slot.year}`;
+}
+
+export function slotStartDate(
+  slot: TermSlot,
+  defs: TermDefinition[],
+): Date | null {
+  const def = getTermDef(defs, slot.termDefinitionId);
+  if (!def) return null;
+  return new Date(slot.year, def.startMonth - 1, 1);
+}
+
+export function isFutureSlot(
+  slot: TermSlot,
+  defs: TermDefinition[],
+  now = new Date(),
+): boolean {
+  const start = slotStartDate(slot, defs);
+  if (!start) return false;
+  return start > startOfLocalDay(now);
+}
+
+/** First canvas slot that has not started yet, or null to start after the last slot. */
+export function defaultArrangeFromSlotId(
+  slots: TermSlot[],
+  defs: TermDefinition[],
+  now = new Date(),
+): string | null {
+  const future = slots.find((slot) => isFutureSlot(slot, defs, now));
+  return future?.id ?? null;
 }
 
 export type TermRef = {

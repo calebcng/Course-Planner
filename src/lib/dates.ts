@@ -25,3 +25,7 @@ export const MONTH_OPTIONS = MONTHS.map((label, index) => ({
   value: index + 1,
   label,
 }));
+
+export function startOfLocalDay(date = new Date()): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}

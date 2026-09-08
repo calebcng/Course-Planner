@@ -1,8 +1,13 @@
 import type { Course, Placement, PlannerDocument, TermSlot } from "@/types";
 import { canPlaceCourse } from "@/lib/placement";
-import { appendNextSlot } from "@/lib/timeline";
+import { appendNextSlot, slotIndex } from "@/lib/timeline";
 
 const MAX_EXTRA_CYCLES = 8;
+
+export type AutoArrangeOptions = {
+  /** First eligible slot. `null` means only terms after the current last slot. */
+  fromSlotId?: string | null;
+};
 
 function sortRemaining(a: Course, b: Course): number {
   const offered = a.offeredIn.length - b.offeredIn.length;
@@ -14,13 +19,21 @@ function sortRemaining(a: Course, b: Course): number {
   return a.number.localeCompare(b.number) || a.name.localeCompare(b.name);
 }
 
+function resolveFromIndex(slots: TermSlot[], fromSlotId?: string | null): number {
+  if (fromSlotId == null) return slots.length;
+  const index = slotIndex(slots, fromSlotId);
+  return index < 0 ? slots.length : index;
+}
+
 function earliestStart(
   course: Course,
   doc: PlannerDocument,
   placements: Placement[],
   slots: TermSlot[],
+  fromIndex: number,
 ): string | undefined {
-  for (const slot of slots) {
+  for (let i = fromIndex; i < slots.length; i++) {
+    const slot = slots[i];
     if (
       canPlaceCourse({
         course,
@@ -37,7 +50,10 @@ function earliestStart(
   return undefined;
 }
 
-export function autoArrange(doc: PlannerDocument): {
+export function autoArrange(
+  doc: PlannerDocument,
+  options: AutoArrangeOptions = {},
+): {
   document: PlannerDocument;
   unplaced: Course[];
 } {
@@ -48,6 +64,7 @@ export function autoArrange(doc: PlannerDocument): {
     .sort(sortRemaining);
 
   let slots = [...doc.slots];
+  const fromIndex = resolveFromIndex(slots, options.fromSlotId);
   const placements: Placement[] = [...doc.placements];
   const unplaced: Course[] = [];
   const maxExtraSlots = Math.max(doc.termDefinitions.length, 1) * MAX_EXTRA_CYCLES;
@@ -58,12 +75,12 @@ export function autoArrange(doc: PlannerDocument): {
       continue;
     }
 
-    let start = earliestStart(course, doc, placements, slots);
+    let start = earliestStart(course, doc, placements, slots, fromIndex);
     let extra = 0;
     while (!start && extra < maxExtraSlots) {
       slots = appendNextSlot(slots, doc.termDefinitions);
       extra += 1;
-      start = earliestStart(course, doc, placements, slots);
+      start = earliestStart(course, doc, placements, slots, fromIndex);
     }
 
     if (start) {
