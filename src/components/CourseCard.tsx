@@ -19,6 +19,7 @@ export const STATUS_CARD: Record<CourseStatus, string> = {
   registered: "border-l-sky-600 bg-sky-50",
   in_progress: "border-l-amber-500 bg-amber-50",
   complete: "border-l-emerald-800 bg-emerald-100",
+  optional: "border-l-violet-500 bg-violet-50",
   waived: "border-l-stone-300 bg-stone-100 text-stone-500",
 };
 

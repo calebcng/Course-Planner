@@ -22,6 +22,8 @@ export function UnscheduledSidebar({
   const termDefinitions = usePlannerStore((s) => s.termDefinitions);
   const showWaived = usePlannerStore((s) => s.showWaived);
   const setShowWaived = usePlannerStore((s) => s.setShowWaived);
+  const showOptional = usePlannerStore((s) => s.showOptional);
+  const setShowOptional = usePlannerStore((s) => s.setShowOptional);
   const setCourseStatus = usePlannerStore((s) => s.setCourseStatus);
   const sidebarCollapsed = usePlannerStore((s) => s.sidebarCollapsed);
   const setSidebarCollapsed = usePlannerStore((s) => s.setSidebarCollapsed);
@@ -35,6 +37,7 @@ export function UnscheduledSidebar({
   const unscheduled = courses.filter((c) => {
     if (placed.has(c.id)) return false;
     if (c.status === "waived" && !showWaived) return false;
+    if (c.status === "optional" && !showOptional) return false;
     return true;
   });
 
@@ -94,15 +97,27 @@ export function UnscheduledSidebar({
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        <div className="mt-2 flex items-center gap-2">
-          <Switch
-            id="show-waived"
-            checked={showWaived}
-            onCheckedChange={setShowWaived}
-          />
-          <Label htmlFor="show-waived" className="text-xs font-normal">
-            Show waived
-          </Label>
+        <div className="mt-2 grid gap-2">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="show-optional"
+              checked={showOptional}
+              onCheckedChange={setShowOptional}
+            />
+            <Label htmlFor="show-optional" className="text-xs font-normal">
+              Show optional
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="show-waived"
+              checked={showWaived}
+              onCheckedChange={setShowWaived}
+            />
+            <Label htmlFor="show-waived" className="text-xs font-normal">
+              Show waived
+            </Label>
+          </div>
         </div>
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto p-3">

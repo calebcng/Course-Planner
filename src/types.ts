@@ -4,6 +4,7 @@ export type CourseStatus =
   | "registered"
   | "in_progress"
   | "complete"
+  | "optional"
   | "waived";
 
 export interface TermDefinition {
@@ -54,6 +55,7 @@ export const COURSE_STATUSES: CourseStatus[] = [
   "registered",
   "in_progress",
   "complete",
+  "optional",
   "waived",
 ];
 
@@ -63,6 +65,7 @@ export const STATUS_LABELS: Record<CourseStatus, string> = {
   registered: "Registered",
   in_progress: "In progress",
   complete: "Complete",
+  optional: "Optional",
   waived: "Waived",
 };
 
@@ -70,6 +73,7 @@ export const MANUAL_STATUSES: CourseStatus[] = [
   "registered",
   "in_progress",
   "complete",
+  "optional",
   "waived",
 ];
 

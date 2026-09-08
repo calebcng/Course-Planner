@@ -32,6 +32,7 @@ export interface PlannerState extends PlannerDocument {
   page: AppPage;
   view: ScheduleView;
   showWaived: boolean;
+  showOptional: boolean;
   sidebarCollapsed: boolean;
   addTermDefinition: (partial?: Partial<TermDefinition>) => void;
   updateTermDefinition: (id: string, patch: Partial<TermDefinition>) => void;
@@ -55,6 +56,7 @@ export interface PlannerState extends PlannerDocument {
   setPage: (page: AppPage) => void;
   setView: (view: ScheduleView) => void;
   setShowWaived: (show: boolean) => void;
+  setShowOptional: (show: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   importCourses: (courses: Omit<Course, "id">[]) => void;
   placeCourseOnTerm: (courseId: string, target: { year: number; termDefinitionId: string }) => boolean;
@@ -115,6 +117,7 @@ export const usePlannerStore = create<PlannerState>()(
       page: "schedule",
       view: "table",
       showWaived: false,
+      showOptional: false,
       sidebarCollapsed: false,
 
       addTermDefinition: (partial) => {
@@ -407,6 +410,7 @@ export const usePlannerStore = create<PlannerState>()(
       setPage: (page) => set({ page }),
       setView: (view) => set({ view }),
       setShowWaived: (show) => set({ showWaived: show }),
+      setShowOptional: (show) => set({ showOptional: show }),
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
 
       runAutoArrange: (fromSlotId) => {
@@ -460,6 +464,7 @@ export const usePlannerStore = create<PlannerState>()(
         page: state.page,
         view: state.view,
         showWaived: state.showWaived,
+        showOptional: state.showOptional,
         sidebarCollapsed: state.sidebarCollapsed,
       }),
       merge: (persisted, current) => {
