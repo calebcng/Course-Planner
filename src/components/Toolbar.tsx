@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AutoArrangeDialog } from "@/components/AutoArrangeDialog";
 import { ClearPlannedDialog } from "@/components/ClearPlannedDialog";
+import { ResetPlannerDialog } from "@/components/ResetPlannerDialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,9 +10,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { createDefaultDocument } from "@/defaults";
 import { documentToPrettyJson, parseImportedFile, writeHash } from "@/lib/serialize";
 import { usePlannerStore, type AppPage } from "@/store/usePlannerStore";
-import { Download, MoreHorizontal, Share2, Upload } from "lucide-react";
+import { Download, MoreHorizontal, RotateCcw, Share2, Upload } from "lucide-react";
 
 const PAGES: { id: AppPage; label: string }[] = [
   { id: "schedule", label: "Schedule" },
@@ -33,6 +35,7 @@ export function Toolbar({
   const hydrateFromDocument = usePlannerStore((s) => s.hydrateFromDocument);
   const [arrangeOpen, setArrangeOpen] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
   const [compactActions, setCompactActions] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
@@ -98,6 +101,16 @@ export function Toolbar({
     reader.readAsText(file);
   };
 
+  const resetPlanner = () => {
+    hydrateFromDocument(createDefaultDocument());
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${window.location.search}`,
+    );
+    toast.success("Planner reset");
+  };
+
   const fileInput = (
     <input
       ref={fileRef}
@@ -142,50 +155,48 @@ export function Toolbar({
           ))}
         </nav>
         <div className="ml-auto flex shrink-0 items-center justify-end gap-1.5">
-          {compactActions ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8 w-8 px-0"
-                  aria-label="Share, export, and import"
-                >
-                  <MoreHorizontal />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+          {!compactActions && (
+            <Button type="button" size="sm" variant="outline" onClick={() => void copyShareLink()}>
+              <Share2 />
+              Copy share link
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 px-0"
+                aria-label="Menu"
+              >
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {compactActions && (
                 <DropdownMenuItem onSelect={() => void copyShareLink()}>
                   <Share2 className="mr-2 h-4 w-4" />
                   Copy share link
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={exportFile}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Export
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => fileRef.current?.click()}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Import
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <>
-              <Button type="button" size="sm" variant="outline" onClick={() => void copyShareLink()}>
-                <Share2 />
-                Copy share link
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={exportFile}>
-                <Upload />
+              )}
+              <DropdownMenuItem onSelect={exportFile}>
+                <Upload className="mr-2 h-4 w-4" />
                 Export
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-                <Download />
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => fileRef.current?.click()}>
+                <Download className="mr-2 h-4 w-4" />
                 Import
-              </Button>
-            </>
-          )}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-red-700 data-[highlighted]:text-red-800"
+                onSelect={() => setResetOpen(true)}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Reset
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {fileInput}
         </div>
         <div
@@ -197,13 +208,8 @@ export function Toolbar({
             <Share2 />
             Copy share link
           </Button>
-          <Button type="button" size="sm" variant="outline" tabIndex={-1}>
-            <Upload />
-            Export
-          </Button>
-          <Button type="button" size="sm" variant="outline" tabIndex={-1}>
-            <Download />
-            Import
+          <Button type="button" size="sm" variant="outline" className="h-8 w-8 px-0" tabIndex={-1}>
+            <MoreHorizontal />
           </Button>
         </div>
       </div>
@@ -253,6 +259,11 @@ export function Toolbar({
         open={clearOpen}
         onOpenChange={setClearOpen}
         onConfirm={onClearPlanned}
+      />
+      <ResetPlannerDialog
+        open={resetOpen}
+        onOpenChange={setResetOpen}
+        onConfirm={resetPlanner}
       />
     </header>
   );
