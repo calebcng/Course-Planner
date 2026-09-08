@@ -26,11 +26,12 @@ export function ClearPlannedDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Clear planned courses</DialogTitle>
+          <DialogTitle>Clear planned courses?</DialogTitle>
           <DialogDescription>
-            Unschedule {plannedCount} Planned course
-            {plannedCount === 1 ? "" : "s"} and set them back to Not planned.
-            Registered, In progress, Complete, and Waived courses stay as they are.
+            This will unschedule {plannedCount} Planned course
+            {plannedCount === 1 ? "" : "s"} and set {plannedCount === 1 ? "it" : "them"} back
+            to Not planned. Registered, In progress, Complete, and Waived courses stay as
+            they are.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

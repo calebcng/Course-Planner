@@ -473,11 +473,11 @@ export function CoursesView() {
                   Download template
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => fileRef.current?.click()}>
-                  <Upload className="mr-2 h-4 w-4" />
+                  <Download className="mr-2 h-4 w-4" />
                   Import courses
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={exportCourses}>
-                  <Download className="mr-2 h-4 w-4" />
+                  <Upload className="mr-2 h-4 w-4" />
                   Export courses
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -494,11 +494,11 @@ export function CoursesView() {
                 variant="outline"
                 onClick={() => fileRef.current?.click()}
               >
-                <Upload />
+                <Download />
                 Import courses
               </Button>
               <Button type="button" size="sm" variant="outline" onClick={exportCourses}>
-                <Download />
+                <Upload />
                 Export courses
               </Button>
             </>
@@ -529,11 +529,11 @@ export function CoursesView() {
             Download template
           </Button>
           <Button type="button" size="sm" variant="outline" tabIndex={-1}>
-            <Upload />
+            <Download />
             Import courses
           </Button>
           <Button type="button" size="sm" variant="outline" tabIndex={-1}>
-            <Download />
+            <Upload />
             Export courses
           </Button>
         </div>

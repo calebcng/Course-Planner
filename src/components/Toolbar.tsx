@@ -161,11 +161,11 @@ export function Toolbar({
                   Copy share link
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={exportFile}>
-                  <Download className="mr-2 h-4 w-4" />
+                  <Upload className="mr-2 h-4 w-4" />
                   Export
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => fileRef.current?.click()}>
-                  <Upload className="mr-2 h-4 w-4" />
+                  <Download className="mr-2 h-4 w-4" />
                   Import
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -177,11 +177,11 @@ export function Toolbar({
                 Copy share link
               </Button>
               <Button type="button" size="sm" variant="outline" onClick={exportFile}>
-                <Download />
+                <Upload />
                 Export
               </Button>
               <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-                <Upload />
+                <Download />
                 Import
               </Button>
             </>
@@ -198,11 +198,11 @@ export function Toolbar({
             Copy share link
           </Button>
           <Button type="button" size="sm" variant="outline" tabIndex={-1}>
-            <Download />
+            <Upload />
             Export
           </Button>
           <Button type="button" size="sm" variant="outline" tabIndex={-1}>
-            <Upload />
+            <Download />
             Import
           </Button>
         </div>
