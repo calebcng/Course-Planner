@@ -15,7 +15,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
-import { MONTH_OPTIONS, monthRangeLabel } from "@/lib/dates";
+import { MONTH_OPTIONS } from "@/lib/dates";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import {

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { monthRangeLabel } from "@/lib/dates";
 import { slotDroppableId } from "@/lib/dnd";
-import { assignLanes, maxLane, occupancyCounts } from "@/lib/placement";
+import { assignLanes, maxLane } from "@/lib/placement";
 import { getTermDef, isVirtualSlotId, slotLabel } from "@/lib/timeline";
 import { useNearEdgeScroll, usePrependScrollFix, useStableNearEdge } from "@/lib/useDragScroll";
 import { usePlannerStore } from "@/store/usePlannerStore";
@@ -33,7 +33,6 @@ export function TimelineView({
   const courses = usePlannerStore((s) => s.courses);
   const placements = usePlannerStore((s) => s.placements);
   const termDefinitions = usePlannerStore((s) => s.termDefinitions);
-  const maxCoursesPerTerm = usePlannerStore((s) => s.maxCoursesPerTerm);
   const setCourseStatus = usePlannerStore((s) => s.setCourseStatus);
   const unplaceCourse = usePlannerStore((s) => s.unplaceCourse);
   const addNextTerm = usePlannerStore((s) => s.addNextTerm);
@@ -41,7 +40,6 @@ export function TimelineView({
   const removeSlot = usePlannerStore((s) => s.removeSlot);
 
   const slots = displaySlots;
-  const counts = occupancyCounts(placements, courses, slots);
   const lanes = assignLanes(placements, courses, slots);
   const laneCount = Math.max(maxLane(lanes) + 1, 1);
   const weeks = slots.map((slot) => {

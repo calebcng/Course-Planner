@@ -2,6 +2,8 @@
 
 A client-only web app for mapping courses onto an open-ended school calendar. Plans live in your browser, can be copied as a shareable link, and can be exported as JSON.
 
+Live site: [https://calebcng.github.io/Course-Planner/](https://calebcng.github.io/Course-Planner/)
+
 ## Run locally
 
 ```bash
@@ -15,6 +17,16 @@ Then open the URL Vite prints (usually `http://localhost:5173`).
 npm run build
 npm run preview
 ```
+
+## GitHub Pages
+
+Pushes to `main` build the Vite app and deploy `dist` via GitHub Actions.
+
+1. In the repo, open **Settings → Pages**.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+3. Push to `main` (or run the **Deploy static content to Pages** workflow).
+
+The published URL is `https://calebcng.github.io/Course-Planner/`. Share links stay in the URL hash, so they work on Pages without a server.
 
 ## How sharing works
 

@@ -7,12 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { monthRangeLabel } from "@/lib/dates";
 import { slotDroppableId } from "@/lib/dnd";
-import {
-  assignLanes,
-  creditsForSlot,
-  maxLane,
-  occupancyCounts,
-} from "@/lib/placement";
+import { assignLanes, creditsForSlot, maxLane } from "@/lib/placement";
 import { getTermDef, isVirtualSlotId, slotLabel } from "@/lib/timeline";
 import { useNearEdgeScroll, usePrependScrollFix, useStableNearEdge } from "@/lib/useDragScroll";
 import { usePlannerStore } from "@/store/usePlannerStore";
@@ -66,7 +61,6 @@ export function TableView({
   const courses = usePlannerStore((s) => s.courses);
   const placements = usePlannerStore((s) => s.placements);
   const termDefinitions = usePlannerStore((s) => s.termDefinitions);
-  const maxCoursesPerTerm = usePlannerStore((s) => s.maxCoursesPerTerm);
   const setCourseStatus = usePlannerStore((s) => s.setCourseStatus);
   const unplaceCourse = usePlannerStore((s) => s.unplaceCourse);
   const addNextTerm = usePlannerStore((s) => s.addNextTerm);
@@ -74,7 +68,6 @@ export function TableView({
   const removeSlot = usePlannerStore((s) => s.removeSlot);
 
   const slots = displaySlots;
-  const counts = occupancyCounts(placements, courses, slots);
   const lanes = assignLanes(placements, courses, slots);
   const laneCount = Math.max(maxLane(lanes) + 1, 1);
   const rowMin = "7.5rem";
@@ -152,7 +145,6 @@ export function TableView({
           {slots.map((slot, index) => {
             const virtual = isVirtualSlotId(slot.id);
             const def = getTermDef(termDefinitions, slot.termDefinitionId);
-            const count = counts[slot.id] ?? 0;
             const credits = creditsForSlot(slot.id, placements, courses);
             let valid: boolean | null = null;
             if (dragging && validSlotIds) {
