@@ -16,7 +16,7 @@ import { canPlaceCourse, placementForCourse, validStartSlotIds } from "@/lib/pla
 import { slotLabel } from "@/lib/timeline";
 import { usePlannerStore } from "@/store/usePlannerStore";
 import type { Course, CourseStatus } from "@/types";
-import { COURSE_STATUSES, STATUS_LABELS } from "@/types";
+import { COURSE_STATUSES, KEEP_PLACEMENT_STATUSES, STATUS_LABELS } from "@/types";
 import { Download, Filter, MoreHorizontal, Plus, Trash2, Upload } from "lucide-react";
 
 const COLS = [
@@ -325,6 +325,7 @@ export function CoursesView() {
       ignoreCourseId: course.id,
     });
     if (!ok) {
+      if (KEEP_PLACEMENT_STATUSES.includes(course.status)) return;
       unplaceCourse(course.id);
       toast.message("Unscheduled: this course no longer fits that term");
     }

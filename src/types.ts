@@ -73,6 +73,13 @@ export const MANUAL_STATUSES: CourseStatus[] = [
   "waived",
 ];
 
+/** Already-taken courses keep their placement when catalog availability changes. */
+export const KEEP_PLACEMENT_STATUSES: CourseStatus[] = [
+  "registered",
+  "in_progress",
+  "complete",
+];
+
 export function applyPlacementStatuses(
   courses: Course[],
   placements: Placement[],
