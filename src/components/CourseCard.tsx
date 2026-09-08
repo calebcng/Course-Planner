@@ -30,9 +30,8 @@ export function offeredTermLabels(
   course: Course,
   defs: TermDefinition[],
 ): string {
-  const names = course.offeredIn
-    .map((id) => defs.find((d) => d.id === id)?.name)
-    .filter(Boolean);
+  const offered = new Set(course.offeredIn);
+  const names = defs.filter((d) => offered.has(d.id)).map((d) => d.name);
   return names.join(", ") || "No offered terms";
 }
 
