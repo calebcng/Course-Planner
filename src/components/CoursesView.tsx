@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
 import { courseCsvTemplate, coursesToCsv, parseCourseCsv } from "@/lib/courseCsv";
 import { monthRangeLabel } from "@/lib/dates";
-import { canPlaceCourse, placementForCourse, validStartSlotIds } from "@/lib/placement";
+import { canPlaceCourse, placementForCourse, validStartSlotIds, OFFERING_UNSCHEDULE_TOAST } from "@/lib/placement";
 import { slotLabel } from "@/lib/timeline";
 import { usePlannerStore } from "@/store/usePlannerStore";
 import type { Course, CourseStatus } from "@/types";
@@ -575,7 +575,11 @@ export function CoursesView() {
                   key={course.id}
                   course={course}
                   onPatch={(patch) => patchAndValidate(course, patch)}
-                  onStatus={(status) => setCourseStatus(course.id, status)}
+                  onStatus={(status) => {
+                    if (setCourseStatus(course.id, status)) {
+                      toast.message(OFFERING_UNSCHEDULE_TOAST);
+                    }
+                  }}
                   onSchedule={(slotId) => {
                     if (!slotId) {
                       unplaceCourse(course.id);

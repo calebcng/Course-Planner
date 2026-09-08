@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 import { createDefaultDocument } from "@/defaults";
 import { autoArrange } from "@/lib/autoArrange";
 import { createId } from "@/lib/ids";
-import { canPlaceCourse } from "@/lib/placement";
+import { canPlaceCourse, mustUnplaceAfterLeavingCommitted } from "@/lib/placement";
 import { hashFromLocation } from "@/lib/serialize";
 import {
   appendCycle,
@@ -47,9 +47,9 @@ export interface PlannerState extends PlannerDocument {
   removeLastTerm: () => void;
   removeSlot: (slotId: string) => void;
   addCourse: (input: Omit<Course, "id">) => string;
-  updateCourse: (id: string, patch: Partial<Course>) => void;
+  updateCourse: (id: string, patch: Partial<Course>) => boolean;
   removeCourse: (id: string) => void;
-  setCourseStatus: (id: string, status: CourseStatus) => void;
+  setCourseStatus: (id: string, status: CourseStatus) => boolean;
   placeCourse: (courseId: string, startSlotId: string) => boolean;
   unplaceCourse: (courseId: string) => void;
   setMaxCoursesPerTerm: (n: number) => void;
@@ -311,9 +311,30 @@ export const usePlannerStore = create<PlannerState>()(
       },
 
       updateCourse: (id, patch) => {
-        set({
-          courses: get().courses.map((c) => (c.id === id ? { ...c, ...patch, id } : c)),
-        });
+        const { courses, placements, slots } = get();
+        const course = courses.find((c) => c.id === id);
+        if (!course) return false;
+        const nextCourse = { ...course, ...patch, id };
+        const nextCourses = courses.map((c) => (c.id === id ? nextCourse : c));
+        const placement = placements.find((p) => p.courseId === id);
+        if (
+          mustUnplaceAfterLeavingCommitted({
+            previousStatus: course.status,
+            nextStatus: nextCourse.status,
+            offeredIn: nextCourse.offeredIn,
+            startSlotId: placement?.startSlotId,
+            slots,
+          })
+        ) {
+          const nextPlacements = placements.filter((p) => p.courseId !== id);
+          set({
+            courses: applyPlacementStatuses(nextCourses, nextPlacements),
+            placements: nextPlacements,
+          });
+          return true;
+        }
+        set({ courses: nextCourses });
+        return false;
       },
 
       removeCourse: (id) => {
@@ -323,11 +344,7 @@ export const usePlannerStore = create<PlannerState>()(
         });
       },
 
-      setCourseStatus: (id, status) => {
-        set({
-          courses: get().courses.map((c) => (c.id === id ? { ...c, status } : c)),
-        });
-      },
+      setCourseStatus: (id, status) => get().updateCourse(id, { status }),
 
       placeCourse: (courseId, startSlotId) => {
         const { courses, slots, placements } = get();

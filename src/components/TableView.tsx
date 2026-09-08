@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { monthRangeLabel } from "@/lib/dates";
 import { slotDroppableId } from "@/lib/dnd";
-import { assignLanes, creditsForSlot, maxLane } from "@/lib/placement";
+import { assignLanes, creditsForSlot, maxLane, OFFERING_UNSCHEDULE_TOAST } from "@/lib/placement";
 import { getTermDef, isVirtualSlotId, slotLabel } from "@/lib/timeline";
 import { useNearEdgeScroll, usePrependScrollFix, useStableNearEdge } from "@/lib/useDragScroll";
 import { usePlannerStore } from "@/store/usePlannerStore";
@@ -227,9 +227,11 @@ export function TableView({
                   course={item.course}
                   termDefinitions={termDefinitions}
                   onEdit={() => onEditCourse(item.course.id)}
-                  onStatusChange={(status) =>
-                    setCourseStatus(item.course.id, status)
-                  }
+                  onStatusChange={(status) => {
+                    if (setCourseStatus(item.course.id, status)) {
+                      toast.message(OFFERING_UNSCHEDULE_TOAST);
+                    }
+                  }}
                   onUnschedule={() => unplaceCourse(item.course.id)}
                 />
               </DraggableCourse>

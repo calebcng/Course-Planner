@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { usePlannerStore } from "@/store/usePlannerStore";
 import { monthRangeLabel } from "@/lib/dates";
+import { OFFERING_UNSCHEDULE_TOAST } from "@/lib/placement";
+import { toast } from "sonner";
 
 type Draft = Omit<Course, "id">;
 
@@ -87,7 +89,9 @@ export function CourseFormDialog({
       durationTerms: Math.max(1, Math.round(draft.durationTerms) || 1),
     };
     if (existing) {
-      updateCourse(existing.id, payload);
+      if (updateCourse(existing.id, payload)) {
+        toast.message(OFFERING_UNSCHEDULE_TOAST);
+      }
     } else {
       addCourse(payload);
     }
