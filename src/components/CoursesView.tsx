@@ -1,16 +1,23 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
-import { courseCsvTemplate, parseCourseCsv } from "@/lib/courseCsv";
+import { courseCsvTemplate, coursesToCsv, parseCourseCsv } from "@/lib/courseCsv";
 import { monthRangeLabel } from "@/lib/dates";
 import { canPlaceCourse, placementForCourse, validStartSlotIds } from "@/lib/placement";
 import { slotLabel } from "@/lib/timeline";
 import { usePlannerStore } from "@/store/usePlannerStore";
 import type { Course, CourseStatus } from "@/types";
 import { COURSE_STATUSES, STATUS_LABELS } from "@/types";
-import { Download, Plus, Trash2, Upload } from "lucide-react";
+import { Download, Filter, MoreHorizontal, Plus, Trash2, Upload } from "lucide-react";
 
 const COLS = [
   "number",
@@ -94,6 +101,10 @@ const cellSelect =
   "min-h-8 w-full min-w-0 cursor-pointer border-0 bg-transparent px-2 py-1.5 text-sm text-stone-900 outline-none ring-0";
 const cell =
   "border-b border-r border-stone-200 bg-white p-0 align-top focus-within:bg-teal-50/40";
+
+function toggleValue<T>(values: T[], value: T): T[] {
+  return values.includes(value) ? values.filter((v) => v !== value) : [...values, value];
+}
 
 function emptyCourse(offeredIn: string[]): Omit<Course, "id"> {
   return {
@@ -182,10 +193,16 @@ export function CoursesView() {
   const importCourses = usePlannerStore((s) => s.importCourses);
 
   const [query, setQuery] = useState("");
+  const [offeredIds, setOfferedIds] = useState<string[]>([]);
+  const [statuses, setStatuses] = useState<CourseStatus[]>([]);
   const [focusId, setFocusId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const filtersRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
   const numberResized = useRef(false);
+  const [compactActions, setCompactActions] = useState(false);
   const [availableWidth, setAvailableWidth] = useState(0);
   const [widths, setWidths] = useState<Record<Col, number>>({
     ...DEFAULT_WIDTH,
@@ -204,17 +221,23 @@ export function CoursesView() {
     const q = query.trim().toLowerCase();
     return courses
       .filter((c) => {
-        if (!q) return true;
-        return (
-          c.number.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
-        );
+        if (q && !c.number.toLowerCase().includes(q) && !c.name.toLowerCase().includes(q)) {
+          return false;
+        }
+        if (offeredIds.length && !offeredIds.some((id) => c.offeredIn.includes(id))) {
+          return false;
+        }
+        if (statuses.length && !statuses.includes(c.status)) {
+          return false;
+        }
+        return true;
       })
       .slice()
       .sort(
         (a, b) =>
           a.number.localeCompare(b.number) || a.name.localeCompare(b.name),
       );
-  }, [courses, query]);
+  }, [courses, query, offeredIds, statuses]);
 
   const tableWidth = COLS.reduce((sum, col) => sum + widths[col], ACTIONS_WIDTH);
   const extra = Math.max(0, availableWidth - tableWidth);
@@ -233,6 +256,24 @@ export function CoursesView() {
     sync();
     const observer = new ResizeObserver(sync);
     observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useLayoutEffect(() => {
+    const row = toolbarRef.current;
+    if (!row) return;
+    const sync = () => {
+      const filters = filtersRef.current;
+      const measure = measureRef.current;
+      if (!filters || !measure) return;
+      const gap = Number.parseFloat(getComputedStyle(row).columnGap || "8") || 8;
+      const slack = 30;
+      setCompactActions(filters.scrollWidth + measure.offsetWidth + gap + slack > row.clientWidth);
+    };
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(row);
+    if (filtersRef.current) observer.observe(filtersRef.current);
     return () => observer.disconnect();
   }, []);
 
@@ -300,6 +341,20 @@ export function CoursesView() {
     URL.revokeObjectURL(url);
   };
 
+  const exportCourses = () => {
+    const csv = coursesToCsv(courses, termDefinitions);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "courses.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(
+      `Exported ${courses.length} course${courses.length === 1 ? "" : "s"}`,
+    );
+  };
+
   const importCsv = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -329,32 +384,125 @@ export function CoursesView() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 bg-[#f7f1e8] px-3 py-2">
-        <Input
-          type="search"
-          placeholder="Search number or name"
-          className="h-8 max-w-xs"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <div className="ml-auto flex flex-wrap items-center gap-1.5">
-          <Button type="button" size="sm" onClick={handleAdd}>
-            <Plus />
-            Add course
-          </Button>
-          <Button type="button" size="sm" variant="outline" onClick={downloadTemplate}>
-            <Download />
-            Download template
-          </Button>
+      <div
+        ref={toolbarRef}
+        className="relative flex flex-nowrap items-center gap-2 overflow-hidden border-b border-stone-200 bg-[#f7f1e8] px-3 py-2"
+      >
+        <div ref={filtersRef} className="flex min-w-0 items-center gap-2">
+          <Filter className="size-4 shrink-0 text-stone-500" aria-hidden />
+          <Input
+            type="search"
+            placeholder="Search number or name"
+            className="h-8 max-w-xs"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant={offeredIds.length > 0 ? "default" : "outline"}
+              >
+                Offered in{offeredIds.length > 0 ? ` (${offeredIds.length})` : ""}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {termDefinitions.map((def) => (
+                <DropdownMenuCheckboxItem
+                  key={def.id}
+                  checked={offeredIds.includes(def.id)}
+                  title={monthRangeLabel(def.startMonth, def.endMonth)}
+                  onCheckedChange={() => setOfferedIds((current) => toggleValue(current, def.id))}
+                >
+                  {def.name}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant={statuses.length > 0 ? "default" : "outline"}
+              >
+                Status{statuses.length > 0 ? ` (${statuses.length})` : ""}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {COURSE_STATUSES.map((status) => (
+                <DropdownMenuCheckboxItem
+                  key={status}
+                  checked={statuses.includes(status)}
+                  onCheckedChange={() => setStatuses((current) => toggleValue(current, status))}
+                >
+                  {STATUS_LABELS[status]}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <Button
             type="button"
             size="sm"
-            variant="outline"
-            onClick={() => fileRef.current?.click()}
+            className={compactActions ? "h-8 w-8 px-0" : undefined}
+            onClick={handleAdd}
+            aria-label={compactActions ? "Add course" : undefined}
           >
-            <Upload />
-            Import courses
+            <Plus />
+            {!compactActions && "Add course"}
           </Button>
+          {compactActions ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 px-0"
+                  aria-label="Course file actions"
+                >
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={downloadTemplate}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download template
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => fileRef.current?.click()}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import courses
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={exportCourses}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export courses
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <>
+              <Button type="button" size="sm" variant="outline" onClick={downloadTemplate}>
+                <Download />
+                Download template
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload />
+                Import courses
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={exportCourses}>
+                <Download />
+                Export courses
+              </Button>
+            </>
+          )}
           <input
             ref={fileRef}
             type="file"
@@ -367,6 +515,28 @@ export function CoursesView() {
             }}
           />
         </div>
+        <div
+          ref={measureRef}
+          aria-hidden
+          className="pointer-events-none invisible absolute left-0 top-0 flex flex-nowrap gap-1.5"
+        >
+          <Button type="button" size="sm" tabIndex={-1}>
+            <Plus />
+            Add course
+          </Button>
+          <Button type="button" size="sm" variant="outline" tabIndex={-1}>
+            <Download />
+            Download template
+          </Button>
+          <Button type="button" size="sm" variant="outline" tabIndex={-1}>
+            <Upload />
+            Import courses
+          </Button>
+          <Button type="button" size="sm" variant="outline" tabIndex={-1}>
+            <Download />
+            Export courses
+          </Button>
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto px-3">
@@ -375,7 +545,7 @@ export function CoursesView() {
           <p className="p-8 text-center text-sm text-stone-500">
             {courses.length === 0
               ? "No courses yet. Add one or import a CSV."
-              : "No courses match that search."}
+              : "No courses match those filters."}
           </p>
         ) : (
           <table

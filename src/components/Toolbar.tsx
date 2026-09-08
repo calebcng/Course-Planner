@@ -1,11 +1,17 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AutoArrangeDialog } from "@/components/AutoArrangeDialog";
 import { ClearPlannedDialog } from "@/components/ClearPlannedDialog";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { documentToPrettyJson, parseImportedFile, writeHash } from "@/lib/serialize";
 import { usePlannerStore, type AppPage } from "@/store/usePlannerStore";
-import { Download, Share2, Upload } from "lucide-react";
+import { Download, MoreHorizontal, Share2, Upload } from "lucide-react";
 
 const PAGES: { id: AppPage; label: string }[] = [
   { id: "schedule", label: "Schedule" },
@@ -27,7 +33,32 @@ export function Toolbar({
   const hydrateFromDocument = usePlannerStore((s) => s.hydrateFromDocument);
   const [arrangeOpen, setArrangeOpen] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
+  const [compactActions, setCompactActions] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    const sync = () => {
+      const title = titleRef.current;
+      const nav = navRef.current;
+      const measure = measureRef.current;
+      if (!title || !nav || !measure) return;
+      const gap = Number.parseFloat(getComputedStyle(row).columnGap || "12") || 12;
+      const needed = title.offsetWidth + nav.offsetWidth + measure.offsetWidth + gap * 2;
+      setCompactActions(needed > row.clientWidth);
+    };
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(row);
+    if (titleRef.current) observer.observe(titleRef.current);
+    if (navRef.current) observer.observe(navRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const copyShareLink = async () => {
     const state = usePlannerStore.getState();
@@ -67,10 +98,24 @@ export function Toolbar({
     reader.readAsText(file);
   };
 
+  const fileInput = (
+    <input
+      ref={fileRef}
+      type="file"
+      accept="application/json,.json"
+      className="hidden"
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) importFile(file);
+        e.target.value = "";
+      }}
+    />
+  );
+
   return (
     <header className="border-b border-stone-200 bg-[#f7f1e8]">
-      <div className="flex flex-wrap items-center gap-3 px-3 py-2">
-        <div>
+      <div ref={rowRef} className="relative flex flex-nowrap items-center gap-3 overflow-hidden px-3 py-2">
+        <div ref={titleRef} className="shrink-0">
           <h1 className="font-serif text-xl font-semibold leading-none text-stone-900">
             Course Planner
           </h1>
@@ -78,7 +123,11 @@ export function Toolbar({
             Plan terms, place courses, share a link
           </p>
         </div>
-        <nav className="flex rounded-md border border-stone-300 bg-white p-0.5" aria-label="Pages">
+        <nav
+          ref={navRef}
+          className="flex shrink-0 rounded-md border border-stone-300 bg-white p-0.5"
+          aria-label="Pages"
+        >
           {PAGES.map((item) => (
             <Button
               key={item.id}
@@ -92,30 +141,70 @@ export function Toolbar({
             </Button>
           ))}
         </nav>
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
-          <Button type="button" size="sm" variant="outline" onClick={copyShareLink}>
+        <div className="ml-auto flex shrink-0 items-center justify-end gap-1.5">
+          {compactActions ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 px-0"
+                  aria-label="Share, export, and import"
+                >
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => void copyShareLink()}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Copy share link
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={exportFile}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => fileRef.current?.click()}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <>
+              <Button type="button" size="sm" variant="outline" onClick={() => void copyShareLink()}>
+                <Share2 />
+                Copy share link
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={exportFile}>
+                <Download />
+                Export
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+                <Upload />
+                Import
+              </Button>
+            </>
+          )}
+          {fileInput}
+        </div>
+        <div
+          ref={measureRef}
+          aria-hidden
+          className="pointer-events-none invisible absolute left-0 top-0 flex flex-nowrap gap-1.5"
+        >
+          <Button type="button" size="sm" variant="outline" tabIndex={-1}>
             <Share2 />
             Copy share link
           </Button>
-          <Button type="button" size="sm" variant="outline" onClick={exportFile}>
+          <Button type="button" size="sm" variant="outline" tabIndex={-1}>
             <Download />
             Export
           </Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+          <Button type="button" size="sm" variant="outline" tabIndex={-1}>
             <Upload />
             Import
           </Button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) importFile(file);
-              e.target.value = "";
-            }}
-          />
         </div>
       </div>
 

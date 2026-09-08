@@ -95,6 +95,26 @@ export function courseCsvTemplate(termNames: string[]): string {
   ].join("\n") + "\n";
 }
 
+export function coursesToCsv(courses: Course[], defs: TermDefinition[]): string {
+  const header = toCsvRow([...COURSE_CSV_HEADERS]);
+  const rows = courses.map((course) => {
+    const offered = course.offeredIn
+      .map((id) => defs.find((d) => d.id === id)?.name)
+      .filter(Boolean)
+      .join("; ");
+    return toCsvRow([
+      course.number,
+      course.name,
+      String(course.credits),
+      String(course.durationTerms),
+      offered,
+      course.notes,
+      course.status,
+    ]);
+  });
+  return [header, ...rows].join("\n") + "\n";
+}
+
 export function parseStatus(raw: string): CourseStatus | null {
   const value = raw.trim();
   if (!value) return "not_planned";
