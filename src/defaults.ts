@@ -63,5 +63,6 @@ export function createDefaultDocument(
     courses: [],
     placements: [],
     maxCoursesPerTerm: DEFAULT_MAX_COURSES_PER_TERM,
+    electiveGroups: [],
   };
 }

@@ -18,6 +18,7 @@ import { Download, MoreHorizontal, RotateCcw, Share2, Upload } from "lucide-reac
 const PAGES: { id: AppPage; label: string }[] = [
   { id: "schedule", label: "Schedule" },
   { id: "courses", label: "Courses" },
+  { id: "electives", label: "Electives" },
   { id: "terms", label: "Terms" },
 ];
 

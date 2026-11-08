@@ -2,6 +2,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { createDefaultDocument } from "@/defaults";
 import { autoArrange } from "@/lib/autoArrange";
+import {
+  clampRequiredCount,
+  dropCourseFromGroups,
+  normalizeElectiveGroups,
+} from "@/lib/electiveGroups";
 import { createId } from "@/lib/ids";
 import { canPlaceCourse } from "@/lib/placement";
 import { hashFromLocation } from "@/lib/serialize";
@@ -19,13 +24,14 @@ import {
 import type {
   Course,
   CourseStatus,
+  ElectiveGroup,
   Placement,
   PlannerDocument,
   TermDefinition,
 } from "@/types";
 import { applyPlacementStatuses, KEEP_PLACEMENT_STATUSES, normalizeCourse, normalizeCourses } from "@/types";
 
-export type AppPage = "schedule" | "courses" | "terms";
+export type AppPage = "schedule" | "courses" | "electives" | "terms";
 export type ScheduleView = "table" | "timeline";
 
 export interface PlannerState extends PlannerDocument {
@@ -62,6 +68,14 @@ export interface PlannerState extends PlannerDocument {
   placeCourseOnTerm: (courseId: string, target: { year: number; termDefinitionId: string }) => boolean;
   runAutoArrange: (fromSlotId?: string | null) => Course[];
   clearPlannedCourses: () => number;
+  addElectiveGroup: (partial?: Partial<Pick<ElectiveGroup, "name" | "requiredCount">>) => string;
+  updateElectiveGroup: (
+    id: string,
+    patch: Partial<Pick<ElectiveGroup, "name" | "requiredCount">>,
+  ) => void;
+  removeElectiveGroup: (id: string) => void;
+  addCourseToElectiveGroup: (groupId: string, courseId: string) => void;
+  removeCourseFromElectiveGroup: (groupId: string, courseId: string) => void;
   hydrateFromDocument: (doc: PlannerDocument) => void;
 }
 
@@ -75,7 +89,10 @@ function migrateUiNav(state: { page?: unknown; view?: unknown }): {
     return { page: "courses", view: "table" };
   }
   const page: AppPage =
-    state.page === "courses" || state.page === "terms" || state.page === "schedule"
+    state.page === "courses" ||
+    state.page === "terms" ||
+    state.page === "schedule" ||
+    state.page === "electives"
       ? state.page
       : "schedule";
   const view: ScheduleView = state.view === "timeline" ? "timeline" : "table";
@@ -92,6 +109,7 @@ function documentSlice(state: PlannerDocument): PlannerDocument {
     courses: state.courses,
     placements: state.placements,
     maxCoursesPerTerm: state.maxCoursesPerTerm,
+    electiveGroups: state.electiveGroups,
   };
 }
 
@@ -364,6 +382,7 @@ export const usePlannerStore = create<PlannerState>()(
         set({
           courses: get().courses.filter((c) => c.id !== id),
           placements: get().placements.filter((p) => p.courseId !== id),
+          electiveGroups: dropCourseFromGroups(get().electiveGroups, id),
         });
       },
 
@@ -482,6 +501,66 @@ export const usePlannerStore = create<PlannerState>()(
         return plannedIds.size;
       },
 
+      addElectiveGroup: (partial) => {
+        const id = createId();
+        const n = get().electiveGroups.length + 1;
+        const group: ElectiveGroup = {
+          id,
+          name: partial?.name?.trim() || `Elective collection ${n}`,
+          requiredCount: clampRequiredCount(partial?.requiredCount ?? 1),
+          courseIds: [],
+        };
+        set({ electiveGroups: [...get().electiveGroups, group] });
+        return id;
+      },
+
+      updateElectiveGroup: (id, patch) => {
+        set({
+          electiveGroups: get().electiveGroups.map((group) => {
+            if (group.id !== id) return group;
+            return {
+              ...group,
+              name: patch.name !== undefined ? patch.name : group.name,
+              requiredCount:
+                patch.requiredCount !== undefined
+                  ? clampRequiredCount(patch.requiredCount)
+                  : group.requiredCount,
+            };
+          }),
+        });
+      },
+
+      removeElectiveGroup: (id) => {
+        set({
+          electiveGroups: get().electiveGroups.filter((group) => group.id !== id),
+        });
+      },
+
+      addCourseToElectiveGroup: (groupId, courseId) => {
+        const { courses, electiveGroups } = get();
+        if (!courses.some((c) => c.id === courseId)) return;
+        const nextGroups = electiveGroups.map((group) => {
+          if (group.id !== groupId || group.courseIds.includes(courseId)) return group;
+          return { ...group, courseIds: [...group.courseIds, courseId] };
+        });
+        set({
+          electiveGroups: nextGroups,
+          courses: courses.map((course) =>
+            course.id === courseId ? { ...course, optional: true } : course,
+          ),
+        });
+      },
+
+      removeCourseFromElectiveGroup: (groupId, courseId) => {
+        set({
+          electiveGroups: get().electiveGroups.map((group) =>
+            group.id === groupId
+              ? { ...group, courseIds: group.courseIds.filter((id) => id !== courseId) }
+              : group,
+          ),
+        });
+      },
+
       hydrateFromDocument: (doc) => {
         const courses = normalizeCourses(doc.courses);
         set({
@@ -493,6 +572,7 @@ export const usePlannerStore = create<PlannerState>()(
           courses: applyPlacementStatuses(courses, doc.placements),
           placements: doc.placements,
           maxCoursesPerTerm: doc.maxCoursesPerTerm,
+          electiveGroups: normalizeElectiveGroups(doc.electiveGroups),
         });
       },
     }),
@@ -507,6 +587,7 @@ export const usePlannerStore = create<PlannerState>()(
         courses: state.courses,
         placements: state.placements,
         maxCoursesPerTerm: state.maxCoursesPerTerm,
+        electiveGroups: state.electiveGroups,
         page: state.page,
         view: state.view,
         showWaived: state.showWaived,
@@ -520,6 +601,7 @@ export const usePlannerStore = create<PlannerState>()(
           ...stored,
           ...migrateUiNav(stored),
           courses: stored.courses ? normalizeCourses(stored.courses) : current.courses,
+          electiveGroups: normalizeElectiveGroups(stored.electiveGroups ?? current.electiveGroups),
         };
       },
       onRehydrateStorage: () => () => {
@@ -531,6 +613,7 @@ export const usePlannerStore = create<PlannerState>()(
             version: 1,
             termDefinitions: orderedTermDefinitions(fromHash.termDefinitions),
             courses: applyPlacementStatuses(courses, fromHash.placements),
+            electiveGroups: normalizeElectiveGroups(fromHash.electiveGroups),
           });
           return;
         }
@@ -539,6 +622,7 @@ export const usePlannerStore = create<PlannerState>()(
         usePlannerStore.setState({
           termDefinitions: orderedTermDefinitions(state.termDefinitions),
           courses: applyPlacementStatuses(courses, state.placements),
+          electiveGroups: normalizeElectiveGroups(state.electiveGroups),
           ...migrateUiNav(state),
         });
       },

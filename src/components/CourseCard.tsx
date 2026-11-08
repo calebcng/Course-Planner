@@ -1,6 +1,8 @@
 import type { PointerEvent } from "react";
 import type { Course, CourseStatus, TermDefinition } from "@/types";
 import { COURSE_STATUSES, STATUS_LABELS } from "@/types";
+import { groupsForCourse } from "@/lib/electiveGroups";
+import { usePlannerStore } from "@/store/usePlannerStore";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,6 +52,8 @@ export function CourseCard({
   onEdit?: () => void;
   onStatusChange?: (status: CourseStatus) => void;
 }) {
+  const electiveGroups = usePlannerStore((s) => s.electiveGroups);
+  const collections = groupsForCourse(electiveGroups, course.id);
   const offered = offeredTermLabels(course, termDefinitions);
 
   return (
@@ -91,9 +95,14 @@ export function CourseCard({
             {course.credits} cr
             {course.durationTerms > 1 ? ` · ${course.durationTerms} terms` : ""}
           </Badge>
-          {course.optional && (
+          {course.optional && collections.length === 0 && (
             <Badge className="bg-violet-100 text-violet-800">Elective</Badge>
           )}
+          {collections.map((group) => (
+            <Badge key={group.id} className="bg-violet-100 text-violet-800">
+              {group.name.trim() || "Elective"}
+            </Badge>
+          ))}
           {onStatusChange && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

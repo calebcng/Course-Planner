@@ -44,9 +44,12 @@ export function CourseFormDialog({
 }) {
   const termDefinitions = usePlannerStore((s) => s.termDefinitions);
   const courses = usePlannerStore((s) => s.courses);
+  const electiveGroups = usePlannerStore((s) => s.electiveGroups);
   const addCourse = usePlannerStore((s) => s.addCourse);
   const updateCourse = usePlannerStore((s) => s.updateCourse);
   const removeCourse = usePlannerStore((s) => s.removeCourse);
+  const addCourseToElectiveGroup = usePlannerStore((s) => s.addCourseToElectiveGroup);
+  const removeCourseFromElectiveGroup = usePlannerStore((s) => s.removeCourseFromElectiveGroup);
 
   const existing = useMemo(
     () => courses.find((c) => c.id === courseId) ?? null,
@@ -54,6 +57,7 @@ export function CourseFormDialog({
   );
 
   const [draft, setDraft] = useState<Draft>(emptyDraft(termDefinitions.map((d) => d.id)));
+  const [groupIds, setGroupIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -68,10 +72,14 @@ export function CourseFormDialog({
         status: existing.status,
         optional: existing.optional,
       });
+      setGroupIds(
+        electiveGroups.filter((group) => group.courseIds.includes(existing.id)).map((g) => g.id),
+      );
     } else {
       setDraft(emptyDraft(termDefinitions.map((d) => d.id)));
+      setGroupIds([]);
     }
-  }, [open, existing, termDefinitions]);
+  }, [open, existing, termDefinitions, electiveGroups]);
 
   const toggleOffered = (id: string) => {
     setDraft((d) => ({
@@ -90,12 +98,22 @@ export function CourseFormDialog({
       credits: Number.isFinite(draft.credits) ? draft.credits : 0,
       durationTerms: Math.max(1, Math.round(draft.durationTerms) || 1),
     };
+    const syncGroups = (courseId: string) => {
+      for (const group of electiveGroups) {
+        const shouldHave = groupIds.includes(group.id);
+        const has = group.courseIds.includes(courseId);
+        if (shouldHave && !has) addCourseToElectiveGroup(group.id, courseId);
+        if (!shouldHave && has) removeCourseFromElectiveGroup(group.id, courseId);
+      }
+    };
+    if (groupIds.length > 0) payload.optional = true;
     if (existing) {
       if (updateCourse(existing.id, payload)) {
         toast.message(OFFERING_UNSCHEDULE_TOAST);
       }
+      syncGroups(existing.id);
     } else {
-      addCourse(payload);
+      syncGroups(addCourse(payload));
     }
     onOpenChange(false);
   };
@@ -183,6 +201,31 @@ export function CourseFormDialog({
             />
             Elective course
           </label>
+          {electiveGroups.length > 0 && (
+            <fieldset className="grid gap-2">
+              <legend className="text-sm font-medium text-stone-700">
+                Elective collections
+              </legend>
+              <div className="grid gap-1.5">
+                {electiveGroups.map((group) => (
+                  <label key={group.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={groupIds.includes(group.id)}
+                      onChange={() =>
+                        setGroupIds((current) =>
+                          current.includes(group.id)
+                            ? current.filter((id) => id !== group.id)
+                            : [...current, group.id],
+                        )
+                      }
+                    />
+                    <span>{group.name.trim() || "Untitled collection"}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
           <fieldset className="grid gap-2">
             <legend className="text-sm font-medium text-stone-700">Offered in</legend>
             <div className="grid gap-1.5">

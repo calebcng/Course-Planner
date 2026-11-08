@@ -2,6 +2,7 @@ import {
   compressToEncodedURIComponent,
   decompressFromEncodedURIComponent,
 } from "lz-string";
+import { normalizeElectiveGroups } from "@/lib/electiveGroups";
 import type { PlannerDocument } from "@/types";
 
 const HASH_PREFIX = "v1.";
@@ -24,8 +25,17 @@ function isPlannerDocument(value: unknown): value is PlannerDocument {
   );
 }
 
-export function toDocument(state: PlannerDocument): PlannerDocument {
+function withElectiveGroups(
+  doc: Omit<PlannerDocument, "electiveGroups"> & { electiveGroups?: unknown },
+): PlannerDocument {
   return {
+    ...doc,
+    electiveGroups: normalizeElectiveGroups(doc.electiveGroups),
+  };
+}
+
+export function toDocument(state: PlannerDocument): PlannerDocument {
+  return withElectiveGroups({
     version: 1,
     termDefinitions: state.termDefinitions,
     startYear: state.startYear,
@@ -34,7 +44,8 @@ export function toDocument(state: PlannerDocument): PlannerDocument {
     courses: state.courses,
     placements: state.placements,
     maxCoursesPerTerm: state.maxCoursesPerTerm,
-  };
+    electiveGroups: state.electiveGroups,
+  });
 }
 
 export function encodeDocument(doc: PlannerDocument): string {
@@ -50,10 +61,10 @@ export function decodeDocument(payload: string): PlannerDocument | null {
       const json = decompressFromEncodedURIComponent(raw.slice(HASH_PREFIX.length));
       if (!json) return null;
       const parsed: unknown = JSON.parse(json);
-      return isPlannerDocument(parsed) ? parsed : null;
+      return isPlannerDocument(parsed) ? withElectiveGroups(parsed) : null;
     }
     const parsed: unknown = JSON.parse(raw);
-    return isPlannerDocument(parsed) ? parsed : null;
+    return isPlannerDocument(parsed) ? withElectiveGroups(parsed) : null;
   } catch {
     return null;
   }
@@ -62,7 +73,7 @@ export function decodeDocument(payload: string): PlannerDocument | null {
 export function parseImportedFile(text: string): PlannerDocument | null {
   try {
     const parsed: unknown = JSON.parse(text);
-    return isPlannerDocument(parsed) ? parsed : null;
+    return isPlannerDocument(parsed) ? withElectiveGroups(parsed) : null;
   } catch {
     return null;
   }

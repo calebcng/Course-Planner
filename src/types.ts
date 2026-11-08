@@ -38,6 +38,13 @@ export interface Placement {
   startSlotId: string;
 }
 
+export interface ElectiveGroup {
+  id: string;
+  name: string;
+  requiredCount: number;
+  courseIds: string[];
+}
+
 export interface PlannerDocument {
   version: 1;
   termDefinitions: TermDefinition[];
@@ -47,6 +54,7 @@ export interface PlannerDocument {
   courses: Course[];
   placements: Placement[];
   maxCoursesPerTerm: number;
+  electiveGroups: ElectiveGroup[];
 }
 
 export const COURSE_STATUSES: CourseStatus[] = [

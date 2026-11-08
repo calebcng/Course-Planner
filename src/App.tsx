@@ -1,5 +1,6 @@
 import { toast, Toaster } from "sonner";
 import { CoursesView } from "@/components/CoursesView";
+import { ElectivesView } from "@/components/ElectivesView";
 import { ScheduleCanvas } from "@/components/ScheduleCanvas";
 import { TermsView } from "@/components/TermsView";
 import { Toolbar } from "@/components/Toolbar";
@@ -41,6 +42,7 @@ export default function App() {
       <Toolbar onAutoArrange={onAutoArrange} onClearPlanned={onClearPlanned} />
       {page === "schedule" && <ScheduleCanvas />}
       {page === "courses" && <CoursesView />}
+      {page === "electives" && <ElectivesView />}
       {page === "terms" && <TermsView />}
       <Toaster richColors position="bottom-right" />
     </div>
