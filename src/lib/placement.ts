@@ -106,6 +106,10 @@ export function validStartSlotIds(options: {
     .map((slot) => slot.id);
 }
 
+function byNumberThenName(a: Course, b: Course): number {
+  return a.number.localeCompare(b.number) || a.name.localeCompare(b.name);
+}
+
 export function suggestionsForSlot(options: {
   slotId: string;
   courses: Course[];
@@ -114,18 +118,61 @@ export function suggestionsForSlot(options: {
   maxCoursesPerTerm?: number;
 }): Course[] {
   const placed = new Set(options.placements.map((p) => p.courseId));
-  return options.courses.filter((course) => {
-    if (placed.has(course.id)) return false;
-    if (course.status === "complete" || course.status === "waived") return false;
-    return canPlaceCourse({
-      course,
-      startSlotId: options.slotId,
-      slots: options.slots,
-      placements: options.placements,
-      courses: options.courses,
-      maxCoursesPerTerm: options.maxCoursesPerTerm,
-    });
-  });
+  return options.courses
+    .filter((course) => {
+      if (placed.has(course.id)) return false;
+      if (course.status === "complete" || course.status === "waived") return false;
+      return canPlaceCourse({
+        course,
+        startSlotId: options.slotId,
+        slots: options.slots,
+        placements: options.placements,
+        courses: options.courses,
+        maxCoursesPerTerm: options.maxCoursesPerTerm,
+      });
+    })
+    .sort(byNumberThenName);
+}
+
+export type ScheduledOffering = {
+  course: Course;
+  placement: Placement;
+  occupiesSlot: boolean;
+  canTransfer: boolean;
+};
+
+export function scheduledOfferingsForSlot(options: {
+  slotId: string;
+  courses: Course[];
+  placements: Placement[];
+  slots: TermSlot[];
+}): ScheduledOffering[] {
+  const slot = options.slots.find((s) => s.id === options.slotId);
+  if (!slot) return [];
+  const byId = new Map(options.courses.map((course) => [course.id, course]));
+  const rows: ScheduledOffering[] = [];
+  for (const placement of options.placements) {
+    const course = byId.get(placement.courseId);
+    if (!course) continue;
+    if (!course.offeredIn.includes(slot.termDefinitionId)) continue;
+    const occupiesSlot = occupiedSlotIds(
+      placement.startSlotId,
+      course.durationTerms,
+      options.slots,
+    ).includes(options.slotId);
+    const canTransfer =
+      !occupiesSlot &&
+      canPlaceCourse({
+        course,
+        startSlotId: options.slotId,
+        slots: options.slots,
+        placements: options.placements,
+        courses: options.courses,
+        ignoreCourseId: course.id,
+      });
+    rows.push({ course, placement, occupiesSlot, canTransfer });
+  }
+  return rows.sort((a, b) => byNumberThenName(a.course, b.course));
 }
 
 export type LaneItem = {
